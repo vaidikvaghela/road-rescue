@@ -13,6 +13,8 @@ openpyxl==3.1.2
 dj-database-url==2.1.0
 psycopg2-binary==2.9.9
 gunicorn==21.2.0
+setuptools<82.0.0
+
 
 
 
