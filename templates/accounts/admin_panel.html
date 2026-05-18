@@ -1,0 +1,569 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Admin Panel — RoadRescue</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    :root{
+      --bg:#0b1120;--surface:var(--surface);--border:rgba(255,255,255,0.10);
+      --text:#f1f5f9;--muted:rgba(255,255,255,0.45);--accent:#f59e0b;
+      --blue:#3b82f6;--green:#10b981;--red:#ef4444;--purple:#8b5cf6;
+      --sidebar-w:240px;--sidebar-bg:rgba(15,23,42,0.85);
+    }
+    body[data-theme="light"] {
+      --bg:#f8fafc;--surface:#ffffff;--border:rgba(0,0,0,0.08);
+      --text:#0f172a;--muted:rgba(15,23,42,0.5);
+      --sidebar-bg:rgba(255,255,255,0.9);
+    }
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;overflow-x:hidden;}
+    body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 20% 10%,rgba(59,130,246,0.12) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 80% 80%,rgba(245,158,11,0.10) 0%,transparent 60%);pointer-events:none;z-index:0;}
+
+    /* Sidebar */
+    .sidebar{position:fixed;left:0;top:0;width:var(--sidebar-w);height:100vh;background:var(--sidebar-bg);border-right:1px solid var(--border);backdrop-filter:blur(20px);display:flex;flex-direction:column;z-index:100;padding:24px 0;transition:transform 0.3s ease;}
+    .sidebar.open{transform:translateX(0) !important;}
+    .sidebar-logo{padding:0 20px 24px;border-bottom:1px solid var(--border);}
+    .sidebar-logo a{font-size:1.3rem;font-weight:800;color:var(--text);text-decoration:none;letter-spacing:-0.03em;}
+    .sidebar-logo a span{color:var(--accent);}
+    .sidebar-logo small{display:block;font-size:0.7rem;color:var(--muted);font-weight:500;margin-top:2px;}
+    .nav-section{padding:20px 12px 8px;font-size:0.65rem;font-weight:700;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;color:var(--text);opacity:0.7;font-size:0.85rem;font-weight:500;cursor:pointer;border-radius:0;transition:all 0.2s;border-left:3px solid transparent;text-decoration:none;}
+    .nav-item:hover{background:rgba(0,0,0,0.03);opacity:1;}
+    .nav-item.active{background:rgba(245,158,11,0.12);color:var(--accent);border-left-color:var(--accent);opacity:1;}
+    .nav-icon{font-size:1rem;width:20px;text-align:center;}
+    .sidebar-footer{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border);}
+    .sidebar-footer a{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:0.8rem;text-decoration:none;transition:color 0.2s;}
+    .sidebar-footer a:hover{color:var(--red);}
+
+    /* Main */
+    .main{margin-left:var(--sidebar-w);flex:1;padding:28px 32px;position:relative;z-index:1;min-height:100vh;}
+    .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;}
+    .page-title{font-size:1.6rem;font-weight:800;letter-spacing:-0.03em;}
+    .page-title span{color:var(--accent);}
+    .page-sub{font-size:0.85rem;color:var(--muted);margin-top:3px;}
+    .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:9999px;font-size:0.72rem;font-weight:700;border:1px solid;}
+    .badge-green{background:rgba(16,185,129,0.15);color:#34d399;border-color:rgba(16,185,129,0.3);}
+    .badge-yellow{background:rgba(245,158,11,0.15);color:#fbbf24;border-color:rgba(245,158,11,0.3);}
+    .badge-red{background:rgba(239,68,68,0.15);color:#fca5a5;border-color:rgba(239,68,68,0.3);}
+    .badge-blue{background:rgba(59,130,246,0.15);color:#93c5fd;border-color:rgba(59,130,246,0.3);}
+    .badge-purple{background:rgba(139,92,246,0.15);color:#c4b5fd;border-color:rgba(139,92,246,0.3);}
+
+    /* Glass */
+    .glass{background:var(--surface);border:1px solid var(--border);backdrop-filter:blur(12px);border-radius:16px;}
+
+    /* Stat Cards */
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px;}
+    .stat-card{padding:20px 22px;display:flex;align-items:center;gap:16px;border-radius:16px;}
+    .stat-icon-box{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;}
+    .stat-val{font-size:1.7rem;font-weight:800;color:var(--text);line-height:1;}
+    .stat-lbl{font-size:0.75rem;color:var(--muted);margin-top:3px;font-weight:500;}
+
+    /* Charts */
+    .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+    .chart-card{padding:20px;}
+    .chart-title{font-size:0.9rem;font-weight:700;margin-bottom:16px;color:var(--text);}
+    .chart-title span{color:var(--muted);font-weight:400;font-size:0.78rem;margin-left:6px;}
+    canvas{max-height:220px;}
+
+    /* Section */
+    .section{display:none;}
+    .section.active{display:block;}
+
+    /* Table */
+    .table-card{overflow:hidden;border-radius:16px;}
+    .table-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+    .table-header h3{font-size:0.95rem;font-weight:700;}
+    .btn-export{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.35);border-radius:9px;color:#34d399;font-size:0.78rem;font-weight:700;cursor:pointer;transition:all 0.2s;}
+    .btn-export:hover{background:rgba(16,185,129,0.3);}
+    .tbl-wrap{overflow-x:auto;}
+    table{width:100%;border-collapse:collapse;font-size:0.82rem;}
+    thead tr{border-bottom:1px solid var(--border);}
+    th{padding:10px 14px;text-align:left;color:var(--muted);font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;}
+    td{padding:11px 14px;border-bottom:1px solid var(--surface);color:var(--text);}
+    tr:last-child td{border-bottom:none;}
+    tr:hover td{background:rgba(255,255,255,0.03);}
+    .loading-row td{text-align:center;padding:3rem;color:var(--muted);}
+    
+    .action-btn { background: rgba(255,255,255,0.1); border: none; padding: 4px 8px; border-radius: 4px; color: var(--text); font-size: 0.7rem; cursor: pointer; margin-right: 4px; transition: 0.2s;}
+    .action-btn:hover { background: rgba(255,255,255,0.2); }
+    .action-btn.danger { background: rgba(239,68,68,0.2); color: #fca5a5; }
+    .action-btn.danger:hover { background: rgba(239,68,68,0.4); }
+    .action-btn.success { background: rgba(16,185,129,0.2); color: #34d399; }
+    .action-btn.success:hover { background: rgba(16,185,129,0.4); }
+
+    /* Spinner */
+    .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+
+    /* Toast */
+    #toast{position:fixed;bottom:28px;right:28px;background:rgba(15,23,42,0.95);border:1px solid var(--border);backdrop-filter:blur(16px);padding:12px 20px;border-radius:12px;font-size:0.85rem;font-weight:600;z-index:9999;transform:translateY(80px);opacity:0;transition:all 0.3s;}
+    #toast.show{transform:translateY(0);opacity:1;}
+
+    @media(max-width:768px){.sidebar{transform:translateX(-100%);}.main{margin-left:0;padding:16px;}.charts-grid{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body><!-- Mobile Header -->
+<div class="mobile-header">
+  <button class="menu-toggle" id="menuToggle">☰</button>
+  <a href="/" style="text-decoration:none;font-weight:800;color:var(--text);">Road<span>Rescue</span></a>
+  <button class="theme-toggle" id="themeToggleMobile">🌙</button>
+</div>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <a href="/">Road<span>Rescue</span></a>
+    <small>Admin Control Panel</small>
+  </div>
+  <div class="nav-section">Main</div>
+  <a class="nav-item active" onclick="showSection('overview',this)">
+    <span class="nav-icon">📊</span> Overview
+  </a>
+  <a class="nav-item" onclick="showSection('requests',this)">
+    <span class="nav-icon">🚨</span> Emergency Requests
+  </a>
+  <a class="nav-item" onclick="showSection('users',this)">
+    <span class="nav-icon">👥</span> Users
+  </a>
+  <a class="nav-item" onclick="showSection('providers',this)">
+    <span class="nav-icon">🔧</span> Service Providers
+  </a>
+  <a class="nav-item" onclick="showSection('payments',this)">
+    <span class="nav-icon">💳</span> Payments
+  </a>
+  <div class="nav-section">System</div>
+  <a class="nav-item" href="/admin/" target="_blank">
+    <span class="nav-icon">🛡️</span> Django Admin
+  </a>
+  <a class="nav-item" href="/api/docs/" target="_blank">
+    <span class="nav-icon">📄</span> API Docs
+  </a>
+  <div class="sidebar-footer">
+    <a href="/dashboard/">← Back to Dashboard</a>
+  </div>
+</aside>
+
+<!-- Main Content -->
+<main class="main">
+  <div style="position:absolute;top:28px;right:32px;display:flex;gap:12px;" class="desktop-only">
+    <button class="theme-toggle" id="themeToggle">🌙</button>
+  </div>
+
+  <!-- OVERVIEW SECTION -->
+  <section class="section active" id="sec-overview">
+    <div class="page-header">
+      <div>
+        <div class="page-title">📊 <span>Overview</span></div>
+        <div class="page-sub">Real-time platform analytics and activity feed.</div>
+      </div>
+      <button class="btn-export" onclick="exportData('requests')">📥 Export All Requests</button>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <div class="glass stat-card">
+        <div class="stat-icon-box" style="background:rgba(59,130,246,0.2);">👥</div>
+        <div><div class="stat-val" id="sv-users">—</div><div class="stat-lbl">Total Users</div></div>
+      </div>
+      <div class="glass stat-card">
+        <div class="stat-icon-box" style="background:rgba(239,68,68,0.2);">🚨</div>
+        <div><div class="stat-val" id="sv-reqs">—</div><div class="stat-lbl">Emergency Requests</div></div>
+      </div>
+      <div class="glass stat-card">
+        <div class="stat-icon-box" style="background:rgba(16,185,129,0.2);">💰</div>
+        <div><div class="stat-val" id="sv-rev">—</div><div class="stat-lbl">Total Revenue (₹)</div></div>
+      </div>
+      <div class="glass stat-card">
+        <div class="stat-icon-box" style="background:rgba(139,92,246,0.2);">🔧</div>
+        <div><div class="stat-val" id="sv-prov">—</div><div class="stat-lbl">Service Providers</div></div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-grid">
+      <div class="glass chart-card">
+        <div class="chart-title">Requests by Status <span>distribution</span></div>
+        <canvas id="chartStatus"></canvas>
+      </div>
+      <div class="glass chart-card">
+        <div class="chart-title">Revenue <span>last 7 days (₹)</span></div>
+        <canvas id="chartRevenue"></canvas>
+      </div>
+      <div class="glass chart-card">
+        <div class="chart-title">Commission <span>last 7 days (₹)</span></div>
+        <canvas id="chartCommission"></canvas>
+      </div>
+      <div class="glass chart-card">
+        <div class="chart-title">User Signups <span>last 7 days</span></div>
+        <canvas id="chartSignups"></canvas>
+      </div>
+      <div class="glass chart-card">
+        <div class="chart-title">Issue Types <span>breakdown</span></div>
+        <canvas id="chartIssues"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- REQUESTS SECTION -->
+  <section class="section" id="sec-requests">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🚨 <span>Emergency Requests</span></div>
+        <div class="page-sub">All incoming emergency service requests.</div>
+      </div>
+      <button class="btn-export" onclick="exportData('requests')">📥 Export Excel</button>
+    </div>
+    <div class="glass table-card">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Requester</th><th>Phone</th><th>Issue</th><th>Vehicle</th><th>Status</th><th>Priority</th><th>Location</th><th>Date</th><th>Actions</th></tr></thead>
+          <tbody id="tbl-requests"><tr class="loading-row"><td colspan="10"><span class="spin"></span> Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- USERS SECTION -->
+  <section class="section" id="sec-users">
+    <div class="page-header">
+      <div>
+        <div class="page-title">👥 <span>Users</span></div>
+        <div class="page-sub">All registered platform users.</div>
+      </div>
+      <button class="btn-export" onclick="exportData('users')">📥 Export Excel</button>
+    </div>
+    <div class="glass table-card">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Email</th><th>Username</th><th>Full Name</th><th>Role</th><th>Staff</th><th>Joined</th><th>Actions</th></tr></thead>
+          <tbody id="tbl-users"><tr class="loading-row"><td colspan="8"><span class="spin"></span> Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROVIDERS SECTION -->
+  <section class="section" id="sec-providers">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🔧 <span>Service Providers</span></div>
+        <div class="page-sub">All registered service businesses.</div>
+      </div>
+      <button class="btn-export" onclick="exportData('providers')">📥 Export Excel</button>
+    </div>
+    <div class="glass table-card">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Business</th><th>City</th><th>Status</th><th>Rating</th><th>Jobs</th><th>Available</th><th>Joined</th><th>Actions</th></tr></thead>
+          <tbody id="tbl-providers"><tr class="loading-row"><td colspan="9"><span class="spin"></span> Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- PAYMENTS SECTION -->
+  <section class="section" id="sec-payments">
+    <div class="page-header">
+      <div>
+        <div class="page-title">💳 <span>Payments</span></div>
+        <div class="page-sub">All Razorpay transactions.</div>
+      </div>
+      <button class="btn-export" onclick="exportData('payments')">📥 Export Excel</button>
+    </div>
+    <div class="glass table-card">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Request</th><th>Requester</th><th>Amount</th><th>Status</th><th>Order ID</th><th>Date</th><th>Actions</th></tr></thead>
+          <tbody id="tbl-payments"><tr class="loading-row"><td colspan="8"><span class="spin"></span> Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+const token = localStorage.getItem('rr_access');
+if (!token) window.location.href = '/login/';
+
+const COLORS = {
+  pending:'#f59e0b', assigned:'#3b82f6', en_route:'#8b5cf6',
+  in_progress:'#06b6d4', completed:'#10b981', cancelled:'#ef4444'
+};
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+function showSection(name, el) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('sec-'+name).classList.add('active');
+  if(el) el.classList.add('active');
+}
+
+async function loadStats() {
+  try {
+    const res = await fetch('/api/v1/auth/admin/stats/', {
+      headers: {'Authorization': 'Bearer '+token}
+    });
+    if (res.status === 403 || res.status === 401) {
+      showToast('⛔ Access denied — staff only');
+      setTimeout(()=>window.location.href='/dashboard/',2000);
+      return;
+    }
+    const data = await res.json();
+    renderSummary(data.summary);
+    renderCharts(data.charts);
+    renderTables(data.tables);
+  } catch(e) {
+    showToast('❌ Failed to load admin data');
+  }
+}
+
+function renderSummary(s) {
+  document.getElementById('sv-users').textContent = s.total_users.toLocaleString();
+  document.getElementById('sv-reqs').textContent  = s.total_requests.toLocaleString();
+  document.getElementById('sv-rev').textContent   = '₹'+Number(s.total_revenue).toLocaleString('en-IN');
+  document.getElementById('sv-prov').textContent  = s.total_providers.toLocaleString();
+}
+
+let chartInstances = {};
+
+function renderCharts(c) {
+  const gridOpts = {color:'rgba(255,255,255,0.06)'};
+  const tickOpts = {color:'rgba(255,255,255,0.4)',font:{size:10}};
+  const legendOpts = {labels:{color:'rgba(255,255,255,0.7)',font:{size:11}}};
+  const fmt = d => d.slice(5);
+
+  if (chartInstances.status) chartInstances.status.destroy();
+  if (chartInstances.revenue) chartInstances.revenue.destroy();
+  if (chartInstances.signups) chartInstances.signups.destroy();
+  if (chartInstances.issues) chartInstances.issues.destroy();
+
+  // Donut — status
+  const statusMap = {};
+  c.req_by_status.forEach(r=>statusMap[r.status]=r.count);
+  const sKeys = Object.keys(COLORS);
+  chartInstances.status = new Chart(document.getElementById('chartStatus'), {
+    type:'doughnut',
+    data:{
+      labels: sKeys.map(k=>k.replace('_',' ').replace(/\b\w/g,l=>l.toUpperCase())),
+      datasets:[{data:sKeys.map(k=>statusMap[k]||0), backgroundColor:sKeys.map(k=>COLORS[k]), borderWidth:2, borderColor:'rgba(0,0,0,0.3)'}]
+    },
+    options:{plugins:{legend:legendOpts},cutout:'65%',maintainAspectRatio:true}
+  });
+
+  // Line — revenue
+  chartInstances.revenue = new Chart(document.getElementById('chartRevenue'), {
+    type:'line',
+    data:{
+      labels:c.revenue_labels.map(fmt),
+      datasets:[{label:'Revenue (₹)',data:c.revenue_data,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.1)',tension:0.4,fill:true,pointBackgroundColor:'#10b981',pointRadius:4}]
+    },
+    options:{plugins:{legend:{display:false}},scales:{x:{grid:gridOpts,ticks:tickOpts},y:{grid:gridOpts,ticks:{...tickOpts,callback:v=>'₹'+v}}},maintainAspectRatio:true}
+  });
+
+  // Line - commission
+  if (chartInstances.commission) chartInstances.commission.destroy();
+  chartInstances.commission = new Chart(document.getElementById('chartCommission'), {
+    type:'line',
+    data:{
+      labels:c.revenue_labels.map(fmt),
+      datasets:[{label:'Commission (₹)',data:c.commission_data,borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,0.1)',tension:0.4,fill:true,pointBackgroundColor:'#8b5cf6',pointRadius:4}]
+    },
+    options:{plugins:{legend:{display:false}},scales:{x:{grid:gridOpts,ticks:tickOpts},y:{grid:gridOpts,ticks:{...tickOpts,callback:v=>'₹'+v}}},maintainAspectRatio:true}
+  });
+
+  // Bar — signups
+  chartInstances.signups = new Chart(document.getElementById('chartSignups'), {
+    type:'bar',
+    data:{
+      labels:c.signup_labels.map(fmt),
+      datasets:[{label:'Signups',data:c.signup_data,backgroundColor:'rgba(59,130,246,0.6)',borderColor:'#3b82f6',borderWidth:1,borderRadius:6}]
+    },
+    options:{plugins:{legend:{display:false}},scales:{x:{grid:gridOpts,ticks:tickOpts},y:{grid:gridOpts,ticks:tickOpts}},maintainAspectRatio:true}
+  });
+
+  // Horizontal bar — issues
+  chartInstances.issues = new Chart(document.getElementById('chartIssues'), {
+    type:'bar',
+    data:{
+      labels:c.issue_labels,
+      datasets:[{label:'Count',data:c.issue_data,backgroundColor:'rgba(245,158,11,0.6)',borderColor:'#f59e0b',borderWidth:1,borderRadius:6}]
+    },
+    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:gridOpts,ticks:tickOpts},y:{grid:gridOpts,ticks:tickOpts}},maintainAspectRatio:true}
+  });
+}
+
+function renderTables(t) {
+    // Requests
+  const pm={pending:'badge-yellow',assigned:'badge-yellow',en_route:'badge-blue',in_progress:'badge-blue',completed:'badge-green',cancelled:'badge-red'};
+  const prio={low:'badge-green',medium:'badge-blue',high:'badge-yellow',critical:'badge-red'};
+  document.getElementById('tbl-requests').innerHTML = t.requests.length
+    ? t.requests.map(r=>`<tr>
+        <td style="font-weight:700;color:var(--text)">#${r.id}</td>
+        <td>${r.requester_name}</td>
+        <td style="color:var(--muted)">${r.requester_phone}</td>
+        <td>${r.issue_type.replace('_',' ').replace(/\b\w/g,l=>l.toUpperCase())}</td>
+        <td>${r.vehicle_type}</td>
+        <td><span class="badge ${pm[r.status]||'badge-yellow'}">${r.status}</span></td>
+        <td><span class="badge ${prio[r.priority]||'badge-blue'}">${r.priority}</span></td>
+        <td style="color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.location_address||'—'}</td>
+        <td style="color:var(--muted)">${r.created_at}</td>
+        <td>
+          ${r.status!=='cancelled' ? `<button class="action-btn danger" onclick="doAdminAction('request','cancel',${r.id})">Cancel</button>`:''}
+          <button class="action-btn danger" onclick="doAdminAction('request','delete',${r.id})">Delete</button>
+        </td>
+      </tr>`).join('')
+    : '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--muted)">No requests yet.</td></tr>';
+
+  // Users
+  document.getElementById('tbl-users').innerHTML = t.users.length
+    ? t.users.map(u=>`<tr>
+        <td style="font-weight:700;color:var(--text)">#${u.id}</td>
+        <td>${u.email}</td>
+        <td style="color:var(--muted)">@${u.username}</td>
+        <td>${[u.first_name,u.last_name].filter(Boolean).join(' ')||'—'}</td>
+        <td><span class="badge ${u.role==='admin'?'badge-red':u.role==='provider'?'badge-purple':'badge-blue'}">${u.role}</span></td>
+        <td>${u.is_staff?'<span class="badge badge-red">Staff</span>':'—'}</td>
+        <td style="color:var(--muted)">${u.date_joined}</td>
+        <td>
+          <button class="action-btn" onclick="doAdminAction('user','toggle_staff',${u.id})">Toggle Staff</button>
+          <button class="action-btn danger" onclick="doAdminAction('user','delete',${u.id})">Delete</button>
+        </td>
+      </tr>`).join('')
+    : '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--muted)">No users yet.</td></tr>';
+
+  // Providers
+  const pstatus={active:'badge-green',inactive:'badge-yellow',suspended:'badge-red',pending:'badge-purple'};
+  document.getElementById('tbl-providers').innerHTML = t.providers.length
+    ? t.providers.map(p=>`<tr>
+        <td style="font-weight:700;color:var(--text)">#${p.id}</td>
+        <td style="font-weight:600">${p.business_name}</td>
+        <td style="color:var(--muted)">${p.city}</td>
+        <td><span class="badge ${pstatus[p.status]||'badge-yellow'}">${p.status}</span></td>
+        <td>⭐ ${p.rating}</td>
+        <td>${p.total_jobs}</td>
+        <td>${p.is_available?'<span class="badge badge-green">Yes</span>':'<span class="badge badge-red">No</span>'}</td>
+        <td style="color:var(--muted)">${p.created_at}</td>
+        <td>
+          ${p.status==='pending'||p.status==='suspended' ? `<button class="action-btn success" onclick="doAdminAction('provider','approve',${p.id})">Approve</button>`:''}
+          ${p.status==='active' ? `<button class="action-btn danger" onclick="doAdminAction('provider','suspend',${p.id})">Suspend</button>`:''}
+          <button class="action-btn danger" onclick="doAdminAction('provider','delete',${p.id})">Delete</button>
+        </td>
+      </tr>`).join('')
+    : '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--muted)">No providers yet.</td></tr>';
+
+  // Payments
+  const paystatus={pending:'badge-yellow',completed:'badge-green',failed:'badge-red',refunded:'badge-purple'};
+  document.getElementById('tbl-payments').innerHTML = t.payments.length
+    ? t.payments.map(p=>`<tr>
+        <td style="font-weight:700;color:var(--text)">#${p.id}</td>
+        <td><a onclick="showSection('requests',null)" style="color:#93c5fd;cursor:pointer">#${p.request__id}</a></td>
+        <td>${p.request__requester_name||'—'}</td>
+        <td style="font-weight:700;color:#34d399">₹${p.amount}</td>
+        <td><span class="badge ${paystatus[p.status]||'badge-yellow'}">${p.status}</span></td>
+        <td style="color:var(--muted);font-size:0.72rem">${p.razorpay_order_id||'—'}</td>
+        <td style="color:var(--muted)">${p.created_at}</td>
+        <td>
+          ${p.status==='completed' ? `<button class="action-btn danger" onclick="doAdminAction('payment','refund',${p.id})">Refund</button>`:''}
+        </td>
+      </tr>`).join('')
+    : '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--muted)">No payments yet.</td></tr>';
+}
+
+async function doAdminAction(model, action, id) {
+  if(!confirm(`Are you sure you want to ${action} this ${model}?`)) return;
+  try {
+    const res = await fetch('/api/v1/auth/admin/action/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1]||''
+      },
+      body: JSON.stringify({ model, action, id })
+    });
+    if(!res.ok) {
+      const err = await res.json();
+      showToast('❌ Error: ' + (err.error || 'Action failed'));
+    } else {
+      showToast('✅ Success!');
+      loadStats(); // Reload
+    }
+  } catch (e) {
+    showToast('❌ Network Error');
+  }
+}
+
+async function exportData(model) {
+  showToast('📥 Preparing '+model+' export…');
+  try {
+    const res = await fetch(`/api/v1/auth/admin/export/?model=${model}`, {
+      headers: {'Authorization': 'Bearer '+token}
+    });
+    if (!res.ok) throw new Error();
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = model+'.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ Export downloaded!');
+  } catch {
+    showToast('❌ Export failed');
+  }
+}
+
+loadStats();
+
+// Auto-refresh admin stats every 10 seconds for LIVE workflow tracking
+setInterval(loadStats, 10000);
+
+// ── Theme Toggle Logic ─────────────────────────
+(function(){
+  const saved = localStorage.getItem('rr_theme') || 'dark';
+  if(saved === 'light') document.body.setAttribute('data-theme','light');
+  const btns = [document.getElementById('themeToggle'), document.getElementById('themeToggleMobile')];
+  
+  function updateBtn(theme){
+    btns.forEach(b => { if(b) b.textContent = theme === 'light' ? '☀️' : '🌙'; });
+  }
+  updateBtn(saved);
+
+  btns.forEach(btn => {
+    if(btn) btn.addEventListener('click', function(){
+      const curr = document.body.getAttribute('data-theme');
+      const next = curr === 'light' ? 'dark' : 'light';
+      if(next === 'dark') document.body.removeAttribute('data-theme');
+      else document.body.setAttribute('data-theme', 'light');
+      localStorage.setItem('rr_theme', next);
+      updateBtn(next);
+      window.location.reload(); // Reload to refresh chart colors
+    });
+  });
+})();
+
+// ── Mobile Menu Toggle ─────────────────────────
+document.getElementById('menuToggle').addEventListener('click', function(){
+  document.getElementById('sidebar').classList.toggle('open');
+});
+// Close sidebar on link click (mobile)
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    if(window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
+  });
+});
+</script>
+</body>
+</html>

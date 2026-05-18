@@ -1,0 +1,895 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RoadRescue — Vehicle Breakdown Portal</title>
+  <meta name="description" content="Instantly find the nearest repair shops, towing services, and emergency mechanics."/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="{% static 'css/style.css' %}"/>
+
+  <!-- SVG Liquid Glass Filter -->
+  <svg class="lg-filter-defs" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="liquid-glass-filter" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.018 0.022" numOctaves="3" seed="42" result="noise"/>
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
+        <feGaussianBlur in="displaced" stdDeviation="0.4" result="blurred"/>
+        <feComposite in="blurred" in2="SourceGraphic" operator="atop"/>
+      </filter>
+    </defs>
+  </svg>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="container">
+    <a href="/" class="navbar-brand">Road<span>Rescue</span></a>
+    <div class="navbar-nav">
+      <a href="#how"       class="nav-link">How it works</a>
+      <a href="#find"      class="nav-link">Find Services</a>
+      <a href="#emergency" class="nav-link">Emergency</a>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <div id="navAuthSlot" style="display:flex;gap:10px;align-items:center;">
+        <a href="/login/"    class="btn btn-glass"         style="padding:8px 20px;">Sign In</a>
+        <a href="/register/" class="btn btn-primary-glass" style="padding:8px 20px;">Register</a>
+      </div>
+      <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
+      <button class="hamburger" id="hamburger" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- Mobile Nav Drawer -->
+<div class="mobile-nav" id="mobileNav">
+  <button class="mobile-nav-close" id="mobileNavClose">×</button>
+  <a href="#how"       class="nav-link" onclick="closeMobileNav()">How it works</a>
+  <a href="#find"      class="nav-link" onclick="closeMobileNav()">Find Services</a>
+  <a href="#emergency" class="nav-link" onclick="closeMobileNav()">Emergency</a>
+  <a href="/login/"    class="btn btn-glass"         style="padding:12px 32px;">Sign In</a>
+  <a href="/register/" class="btn btn-primary-glass" style="padding:12px 32px;">Register</a>
+</div>
+
+<!-- Hero -->
+<section class="hero" id="home">
+  <div class="container">
+    <div style="max-width:680px;">
+      <div class="section-label">🚗 24/7 Roadside Assistance</div>
+      <h1 class="hero-title">Stranded? We'll get<br/>you back on the <em>road.</em></h1>
+      <p class="hero-sub">Instantly connect with nearby repair shops, towing services and emergency mechanics — wherever you are.</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:2.5rem;">
+        <a href="#find"      class="btn btn-primary-glass" style="padding:14px 32px;font-size:1rem;">📍 Find Nearby Services</a>
+        <button onclick="openSOS()" class="btn btn-danger-glass" style="padding:14px 32px;font-size:1rem;">🆘 Emergency SOS</button>
+      </div>
+
+      <!-- Glass stats row -->
+      <div style="display:flex;gap:16px;margin-top:3rem;flex-wrap:wrap;">
+        <div class="glass card-sm" style="border-radius:var(--r-xl);min-width:140px;text-align:center;">
+          <div style="font-size:2rem;font-weight:800;color:var(--text);">2,400<span style="color:#93c5fd;">+</span></div>
+          <div style="font-size:0.8rem;color:var(--muted);margin-top:2px;">Service Providers</div>
+        </div>
+        <div class="glass card-sm" style="border-radius:var(--r-xl);min-width:140px;text-align:center;">
+          <div style="font-size:2rem;font-weight:800;color:var(--text);">18<span style="color:#93c5fd;">min</span></div>
+          <div style="font-size:0.8rem;color:var(--muted);margin-top:2px;">Avg. Response</div>
+        </div>
+        <div class="glass card-sm" style="border-radius:var(--r-xl);min-width:140px;text-align:center;">
+          <div style="font-size:2rem;font-weight:800;color:var(--text);">98<span style="color:#93c5fd;">%</span></div>
+          <div style="font-size:0.8rem;color:var(--muted);margin-top:2px;">Satisfaction Rate</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How it works -->
+<section class="section" id="how">
+  <div class="container">
+    <div class="section-label fade-up">⚡ How It Works</div>
+    <h2 class="section-title fade-up">Help in 4 simple steps</h2>
+    <p class="section-sub fade-up">No downloads required. Open the portal and get help instantly.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:2.5rem;">
+      {% for step in "1234" %}
+      {% endfor %}
+      <div class="glass card glass-specular fade-up" style="text-align:center;">
+        <div class="step-num">01</div>
+        <h3 style="color:var(--text);margin-bottom:8px;">Share Location</h3>
+        <p style="color:var(--muted);font-size:0.875rem;">Allow location access and the portal instantly identifies your exact position.</p>
+      </div>
+      <div class="glass card glass-specular fade-up" style="text-align:center;">
+        <div class="step-num">02</div>
+        <h3 style="color:var(--text);margin-bottom:8px;">Browse Providers</h3>
+        <p style="color:var(--muted);font-size:0.875rem;">Filter by service type, availability, distance, and pricing.</p>
+      </div>
+      <div class="glass card glass-specular fade-up" style="text-align:center;">
+        <div class="step-num">03</div>
+        <h3 style="color:var(--text);margin-bottom:8px;">Request Service</h3>
+        <p style="color:var(--muted);font-size:0.875rem;">Submit your request and get a confirmation within minutes.</p>
+      </div>
+      <div class="glass card glass-specular fade-up" style="text-align:center;">
+        <div class="step-num">04</div>
+        <h3 style="color:var(--text);margin-bottom:8px;">Track &amp; Rate</h3>
+        <p style="color:var(--muted);font-size:0.875rem;">Follow real-time updates then rate the service when done.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Live Map -->
+<section class="section" id="find">
+  <div class="container">
+    <div class="section-label fade-up">🗺️ Live Map</div>
+    <h2 class="section-title fade-up">Find services near you</h2>
+    <p class="section-sub fade-up">Click any pin for details, hours, and contact info.</p>
+    <div class="map-layout" style="margin-top:2rem;">
+      <div>
+        <div class="glass" style="border-radius:var(--r-xl);overflow:hidden;padding:0;position:relative;">
+          <!-- GPS status bar -->
+          <div id="gpsBar" style="position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:10;
+            background:rgba(15,23,42,0.80);backdrop-filter:blur(12px);
+            border:1px solid rgba(255,255,255,0.20);border-radius:9999px;
+            padding:6px 16px;font-size:0.78rem;font-weight:600;color:#93c5fd;
+            display:flex;align-items:center;gap:8px;white-space:nowrap;">
+            <span id="gpsDot" style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;animation:gpsPulse 1.5s infinite;"></span>
+            <span id="gpsLabel">Acquiring GPS…</span>
+          </div>
+          <div id="realMap" style="width:100%;height:520px;z-index:1;"></div>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:1rem;">
+          <div style="font-size:0.8rem;color:var(--muted);display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#3b82f6;display:inline-block;"></span>Your Location</div>
+          <div style="font-size:0.8rem;color:var(--muted);display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#10b981;display:inline-block;"></span>Repair Shop</div>
+          <div style="font-size:0.8rem;color:var(--muted);display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#6366f1;display:inline-block;"></span>Towing</div>
+          <div style="font-size:0.8rem;color:var(--muted);display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;display:inline-block;"></span>Mobile Mechanic</div>
+        </div>
+      </div>
+      <div class="map-sidebar">
+        <input type="text" id="mapSearch" class="form-control" placeholder="🔍 Search address or place…"/>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div class="filter-chip active" onclick="setFilter(this)">All</div>
+          <div class="filter-chip" onclick="setFilter(this)">Repairs</div>
+          <div class="filter-chip" onclick="setFilter(this)">Towing</div>
+          <div class="filter-chip" onclick="setFilter(this)">Tyres</div>
+          <div class="filter-chip" onclick="setFilter(this)">Fuel</div>
+        </div>
+        <div id="dynamicProvidersList" style="display:flex; flex-direction:column; gap:16px;">
+          <div style="text-align:center;padding:2rem;color:var(--muted);">
+            <span class="spin" style="display:inline-block;border:3px solid rgba(255,255,255,0.2);border-top-color:#3b82f6;border-radius:50%;width:20px;height:20px;animation:spin 1s linear infinite;margin-bottom:10px;"></span>
+            <br/>Detecting nearby providers...
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Emergency Request -->
+<section class="section" id="emergency">
+  <div class="container">
+    <div class="section-label fade-up">🆘 Emergency Services</div>
+    <h2 class="section-title fade-up">Submit an emergency request</h2>
+    <p class="section-sub fade-up">Fill the form and we'll dispatch the nearest technician immediately.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:24px;margin-top:2rem;">
+      <div class="glass card glass-specular fade-up">
+        <h3 style="color:var(--text);margin-bottom:1.5rem;">🆘 Emergency Request Form</h3>
+        <form id="emergencyForm">{% csrf_token %}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div class="form-group">
+              <label class="form-label">Your Name</label>
+              <input type="text" class="form-control" id="eName" placeholder="Rajesh Kumar" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input type="text" class="form-control" id="ePhone" placeholder="+91 98765…" required/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Current Location</label>
+            <input type="text" class="form-control" id="eLocation" placeholder="Auto-detecting…"/>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div class="form-group">
+              <label class="form-label">Vehicle</label>
+              <select class="form-control" id="eVehicle">
+                <option value="car">Car / Sedan</option>
+                <option value="suv">SUV / MUV</option>
+                <option value="motorcycle">Motorcycle</option>
+                <option value="truck">Truck</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Issue</label>
+              <select class="form-control" id="eIssue">
+                <option value="flat_tyre">Flat Tyre</option>
+                <option value="engine_failure">Engine Failure</option>
+                <option value="battery_dead">Battery Dead</option>
+                <option value="accident">Accident</option>
+                <option value="out_of_fuel">Out of Fuel</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" id="eNotes" rows="3" placeholder="Describe the issue…"></textarea>
+          </div>
+          <button type="submit" class="btn btn-danger-glass" style="width:100%;padding:14px;font-size:1rem;" id="eBtn">🚨 Dispatch Emergency Help</button>
+        </form>
+      </div>
+      <div class="glass card glass-specular fade-up" style="align-self:start;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+          <h3 style="color:var(--text);">Request Status</h3>
+          <span class="badge badge-warning-glass" id="liveBadge">Waiting</span>
+        </div>
+        <div class="tracker-timeline">
+          <div class="t-item"><div class="t-dot" id="dot1"></div><div class="t-label" id="lbl1">Request Received</div><div class="t-time" id="time1">—</div></div>
+          <div class="t-item"><div class="t-dot" id="dot2"></div><div class="t-label" id="lbl2">Provider Assigned</div><div class="t-time" id="time2">—</div></div>
+          <div class="t-item"><div class="t-dot" id="dot3"></div><div class="t-label" id="lbl3">Technician En Route</div><div class="t-time" id="time3">—</div><div style="font-size:0.82rem;color:var(--muted);margin-top:3px;" id="note3"></div></div>
+          <div class="t-item"><div class="t-dot" id="dot4"></div><div class="t-label" id="lbl4">Service in Progress</div><div class="t-time" id="time4">—</div></div>
+          <div class="t-item" style="margin-bottom:0;"><div class="t-dot" id="dot5"></div><div class="t-label" id="lbl5">Rate Your Experience</div><div class="t-time" id="time5">—</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Reviews Section -->
+<section class="section" id="reviews" style="padding:80px 0;">
+  <div class="container">
+    <div class="section-label fade-up">⭐ Customer Reviews</div>
+    <h2 class="section-title fade-up">What our users say</h2>
+    <p class="section-sub fade-up">Real reviews from real customers who used RoadRescue services.</p>
+    <!-- Review Cards Grid -->
+    <div id="reviewsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;margin-top:2.5rem;">
+      <!-- Loaded by JS -->
+      <div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--muted);">
+        <div style="display:inline-block;width:24px;height:24px;border:3px solid rgba(255,255,255,0.2);border-top-color:#f59e0b;border-radius:50%;animation:spin 1s linear infinite;"></div>
+        <p style="margin-top:12px;">Loading reviews…</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="container footer-grid">
+    <!-- About Section -->
+    <div class="footer-col footer-about">
+      <div class="footer-brand">Road<span>Rescue</span></div>
+      <p class="footer-about-text">
+        RoadRescue is a premium 24/7 roadside assistance portal connecting stranded drivers with nearby verified towing services, mechanics, and emergency repair shops instantly.
+      </p>
+      <div class="footer-socials">
+        <a href="#" class="social-icon" aria-label="Facebook">
+          <svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M14 13.5h2.5l1-3H14V8.5c0-.8.2-1.1 1-1.1h1.5v-3h-2.5C11.8 4.4 10 6.2 10 8.5v2H8v3h2V20h4v-6.5z"/></svg>
+        </a>
+        <a href="#" class="social-icon" aria-label="Twitter">
+          <svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.48.75 2.78 1.9 3.55-.7 0-1.36-.2-1.94-.53v.05c0 2.05 1.46 3.75 3.39 4.14-.36.1-.73.15-1.12.15-.27 0-.54-.03-.8-.08.54 1.68 2.1 2.9 3.95 2.94-1.45 1.13-3.26 1.8-5.23 1.8-.34 0-.67-.02-1-.06C2.18 19.08 4.47 20 6.94 20 14.81 20 19.13 13.48 19.13 7.82c0-.18 0-.37-.01-.55.84-.6 1.56-1.36 2.14-2.22z"/></svg>
+        </a>
+        <a href="#" class="social-icon" aria-label="LinkedIn">
+          <svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.8v8.37h2.8v-4.87c0-.26.05-.52.12-.7a1.09 1.09 0 0 1 .98-.7c.68 0 1 .53 1 1.3v4.97h2.8M6.5 8.37a1.37 1.37 0 1 0 0-2.75 1.37 1.37 0 0 0 0 2.75M8 18.5V10.13H5.2v8.37H8z"/></svg>
+        </a>
+      </div>
+    </div>
+    
+    <!-- Quick Links Column -->
+    <div class="footer-col">
+      <h4 class="footer-title">Quick Links</h4>
+      <ul class="footer-col-links">
+        <li><a href="#how">How it Works</a></li>
+        <li><a href="#find">Find Services</a></li>
+        <li><a href="#emergency">Emergency SOS</a></li>
+        <li><a href="#reviews">User Reviews</a></li>
+      </ul>
+    </div>
+    
+    <!-- Services Column -->
+    <div class="footer-col">
+      <h4 class="footer-title">Our Services</h4>
+      <ul class="footer-col-links">
+        <li><a href="#find">Emergency Towing</a></li>
+        <li><a href="#find">Flat Tyre Change</a></li>
+        <li><a href="#find">Battery Jumpstart</a></li>
+        <li><a href="#find">Fuel Delivery</a></li>
+        <li><a href="#find">On-Spot Repair</a></li>
+      </ul>
+    </div>
+
+    <!-- Legal & Support Column -->
+    <div class="footer-col">
+      <h4 class="footer-title">Platform</h4>
+      <ul class="footer-col-links">
+        <li><a href="/register/">Register Partner</a></li>
+        <li><a href="/login/">Sign In Portal</a></li>
+        <li><a href="/api/docs/">API Documentation</a></li>
+        <li><a href="#" onclick="showToast('🔒 All interactions are fully encrypted.')">Privacy Policy</a></li>
+      </ul>
+    </div>
+  </div>
+  
+  <!-- Footer Bottom Line -->
+  <div class="footer-bottom">
+    <div class="container footer-bottom-content">
+      <p class="copyright">&copy; 2026 RoadRescue. All rights reserved.</p>
+      <div class="status-indicator">
+        <span class="status-dot"></span>
+        <span class="status-text">All systems operational</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- SOS Modal -->
+<div class="modal-overlay" id="sosModal" onclick="closeSOS(event)">
+  <div class="glass modal-glass glass-specular">
+    <h2 style="color:#fca5a5;margin-bottom:1rem;">🚨 Emergency SOS</h2>
+    <p style="color:var(--muted);margin-bottom:2rem;line-height:1.6;">This will dispatch the nearest available emergency service to your GPS location. Confirm only in genuine breakdowns.</p>
+    <div style="display:flex;gap:12px;">
+      <button class="btn btn-glass" style="flex:1;" onclick="closeSOS()">Cancel</button>
+      <button class="btn btn-danger-glass" style="flex:1;" onclick="confirmSOS()">Yes, Send Help!</button>
+    </div>
+  </div>
+</div>
+<!-- Service Request Modal -->
+<div class="modal-overlay" id="serviceReqModal" onclick="closeServiceReq(event)">
+  <div class="glass modal-glass glass-specular large-modal" style="max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column;">
+    <div class="sr-modal-layout">
+      <!-- Left Sidebar: Provider Details -->
+      <div class="provider-info-panel">
+        <div style="text-align:center; margin-bottom: 1.5rem;">
+          <div style="width:64px; height:64px; border-radius:16px; background:rgba(37,99,235,0.28); border:1px solid rgba(96,165,250,0.45); display:flex; align-items:center; justify-content:center; font-size:1.8rem; margin:0 auto 1rem;" id="srProviderIcon">🔧</div>
+          <h3 style="color:var(--text); font-size:1.4rem; font-weight:800; letter-spacing:-0.03em; margin-bottom:4px;" id="srProviderNameDisplay">Provider Name</h3>
+          <div style="font-size:0.85rem; color:var(--muted);" id="srProviderServices">Services</div>
+        </div>
+        
+        <div style="display:flex; flex-direction:column; gap:12px; font-size:0.85rem;">
+          <div style="display:flex; justify-content:space-between; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1);">
+            <span style="color:var(--muted);">Base Fare</span>
+            <span style="font-weight:700; color:#60a5fa;" id="srProviderFare">₹0</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1);">
+            <span style="color:var(--muted);">Rating</span>
+            <span style="font-weight:700; color:#fbbf24;" id="srProviderRating">★ New</span>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span style="color:var(--muted);">Hours</span>
+            <span style="font-weight:600; color:var(--text);" id="srProviderHours">Standard</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Right Side: Form -->
+      <div style="padding:32px;">
+        <h2 style="color:var(--text);margin-bottom:1rem;" id="serviceReqTitle">Request Service</h2>
+        <form id="serviceReqForm">
+          <input type="hidden" id="srProviderId">
+          <div class="form-group">
+            <label class="form-label">Service Type Needed</label>
+            <input type="text" class="form-control" id="srServiceType" placeholder="e.g. Engine tune-up, Oil change" required/>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div class="form-group">
+              <label class="form-label">Vehicle Type</label>
+              <select class="form-control" id="srVehicleType">
+                <option value="car">Car / Sedan</option>
+                <option value="suv">SUV / MUV</option>
+                <option value="motorcycle">Motorcycle</option>
+                <option value="truck">Truck</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Registration No.</label>
+              <input type="text" class="form-control" id="srRegNo" placeholder="MH 01 AB 1234"/>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
+            <div class="form-group">
+              <label class="form-label">Make</label>
+              <input type="text" class="form-control" id="srMake" placeholder="Honda"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Model</label>
+              <input type="text" class="form-control" id="srModel" placeholder="City"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Year</label>
+              <input type="text" class="form-control" id="srYear" placeholder="2020"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Address / Location</label>
+            <input type="text" class="form-control" id="srLocation" placeholder="Where is the vehicle?"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Additional Notes</label>
+            <textarea class="form-control" id="srNotes" rows="2" placeholder="Any specific issues or requests..."></textarea>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:1.5rem;">
+            <button type="button" class="btn btn-glass" style="flex:1;" onclick="closeServiceReq()">Cancel</button>
+            <button type="submit" class="btn btn-primary-glass" style="flex:1;" id="srBtn">Send Request</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const CSRF=document.cookie.match(/csrftoken=([^;]+)/)?.[1]||'';
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);}
+function setFilter(chip){document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));chip.classList.add('active');}
+function openSOS(){document.getElementById('sosModal').classList.add('open');document.body.style.overflow='hidden';}
+function closeSOS(e){if(!e||e.target===document.getElementById('sosModal')){document.getElementById('sosModal').classList.remove('open');document.body.style.overflow='';}}
+function confirmSOS(){closeSOS();document.getElementById('emergency').scrollIntoView({behavior:'smooth'});showToast('🚨 SOS dispatched! Help is on the way.');}
+
+window.providersMap = {};
+function openServiceReq(providerId) {
+  const token = localStorage.getItem('rr_access');
+  if(!token) {
+    showToast('Please sign in to request service.');
+    window.location.href = '/login/';
+    return;
+  }
+  const p = window.providersMap[providerId];
+  if (!p) return;
+
+  document.getElementById('srProviderId').value = p.id;
+  document.getElementById('serviceReqTitle').textContent = 'Request Service';
+  
+  // Update side panel
+  document.getElementById('srProviderNameDisplay').textContent = p.business_name;
+  const firstType = p.service_types && p.service_types.length ? p.service_types[0].name.toLowerCase() : '';
+  const iconStr = firstType.includes('tow') ? '🚛' : (firstType.includes('mech') ? '⚡' : (firstType.includes('fuel') ? '⛽' : '🔧'));
+  const displayName = p.service_types && p.service_types.length ? p.service_types.map(t=>t.name).join(', ') : 'General Service';
+  
+  document.getElementById('srProviderIcon').textContent = iconStr;
+  document.getElementById('srProviderServices').textContent = displayName;
+  document.getElementById('srProviderFare').textContent = p.base_fee ? '₹' + p.base_fee : 'N/A';
+  document.getElementById('srProviderRating').textContent = p.rating ? '★ ' + p.rating : '★ New';
+  document.getElementById('srProviderHours').textContent = p.is_24_7 ? '24/7' : 'Standard';
+
+  document.getElementById('serviceReqModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeServiceReq(e) {
+  if(!e || e.target === document.getElementById('serviceReqModal')) {
+    document.getElementById('serviceReqModal').classList.remove('open');
+    document.body.style.overflow = '';
+    document.getElementById('serviceReqForm').reset();
+  }
+}
+document.getElementById('serviceReqForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('srBtn');
+  btn.innerHTML = '<span class="spinner"></span> Sending...'; btn.disabled = true;
+  const payload = {
+    provider: document.getElementById('srProviderId').value,
+    service_type_text: document.getElementById('srServiceType').value,
+    vehicle_type: document.getElementById('srVehicleType').value,
+    vehicle_reg_no: document.getElementById('srRegNo').value,
+    vehicle_make: document.getElementById('srMake').value,
+    vehicle_model: document.getElementById('srModel').value,
+    vehicle_year: document.getElementById('srYear').value,
+    location_address: document.getElementById('srLocation').value,
+    notes: document.getElementById('srNotes').value
+  };
+  try {
+    const token = localStorage.getItem('rr_access');
+    const res = await fetch('/api/v1/emergency/service-requests/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'X-CSRFToken': CSRF },
+      body: JSON.stringify(payload)
+    });
+    if(res.ok) { showToast('✅ Service request sent!'); closeServiceReq(); }
+    else { const data = await res.json(); showToast('❌ Failed: ' + (data.detail || data.error || 'Check fields')); }
+  } catch(err) { showToast('❌ Network error.'); }
+  btn.textContent = 'Send Request'; btn.disabled = false;
+});
+
+// Map
+const map=L.map('realMap',{center:[23.0225,72.5714],zoom:13});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(map);
+function makeIcon(color,size=15){return L.divIcon({html:`<div style="width:${size}px;height:${size}px;background:${color};border-radius:50%;border:2.5px solid rgba(255,255,255,0.9);box-shadow:0 0 10px ${color},0 0 20px ${color}44;"></div>`,iconSize:[size,size],iconAnchor:[size/2,size/2],popupAnchor:[0,-(size/2+4)],className:''});}
+let providerMarkers = [];
+
+async function fetchNearbyProviders(lat, lon) {
+  try {
+    const res = await fetch(`/api/v1/services/providers/nearby/?lat=${lat}&lon=${lon}&radius=50`);
+    if(!res.ok) return;
+    const data = await res.json();
+
+    // Clear old markers
+    providerMarkers.forEach(m => map.removeLayer(m));
+    providerMarkers = [];
+
+    const listContainer = document.getElementById('dynamicProvidersList');
+    if(!data.length) {
+      listContainer.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted);">No service providers found nearby. Register some providers to see them here.</div>';
+      return;
+    }
+
+    let html = '';
+    data.forEach((p, index) => {
+      window.providersMap[p.id] = p;
+      // service_types is an array of {id, name, icon} objects
+      const firstType = p.service_types && p.service_types.length ? p.service_types[0].name.toLowerCase() : '';
+      const iconStr   = firstType.includes('tow') ? '🚛' : (firstType.includes('mech') ? '⚡' : (firstType.includes('fuel') ? '⛽' : '🔧'));
+      const iconColor = firstType.includes('tow') ? '#6366f1' : (firstType.includes('mech') ? '#f59e0b' : (firstType.includes('fuel') ? '#f97316' : '#10b981'));
+
+      // Only plot marker if we have coordinates
+      if(p.latitude && p.longitude) {
+        const m = L.marker([parseFloat(p.latitude), parseFloat(p.longitude)], {icon: makeIcon(iconColor)}).addTo(map);
+        m.bindPopup(`<div style="font-family:'Inter',sans-serif;min-width:180px;line-height:1.5;">
+          <div style="font-weight:700;font-size:0.95rem;">${p.business_name}</div>
+          <div style="font-size:0.75rem;color:#64748b;margin-bottom:8px;">${p.service_type_display}</div>
+          <div style="font-size:0.8rem;margin-bottom:4px;"><b style="color:#2563eb;">₹${p.base_fee||'N/A'}</b> &nbsp;★${p.rating||'New'} &nbsp;📍${p.distance != null ? p.distance : '?'} km</div>
+          <div style="font-size:0.73rem;color:#64748b;margin-bottom:10px;">🕐${p.is_24_7 ? '24/7' : 'Standard Hours'} &nbsp;📞${p.phone||'—'}</div>
+          <button onclick="openServiceReq(${p.id})" style="width:100%;background:#2563eb;color:#fff;border:none;padding:8px;border-radius:8px;cursor:pointer;font-size:0.82rem;font-weight:600;">Request Service</button></div>`,{maxWidth:220});
+
+        const cardId = 'card_' + p.id;
+        m.on('click',()=>{document.querySelectorAll('.service-card').forEach(c=>c.classList.remove('featured'));document.getElementById(cardId)?.classList.add('featured');});
+        providerMarkers.push(m);
+      }
+
+      // Build Sidebar Card
+      const isNearest  = index === 0 ? '<span class="badge badge-primary-glass" style="margin-left:6px;">Nearest</span>' : '';
+      const isFeatured = index === 0 ? 'featured' : '';
+      const distLabel  = p.distance != null ? p.distance + ' km' : p.city;
+      const cardId     = 'card_' + p.id;
+
+      html += `
+        <div class="glass card card-sm service-card ${isFeatured} glass-specular" id="${cardId}">
+          <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+            <div>
+              <div style="font-weight:700;color:var(--text);font-size:0.95rem;">${p.business_name} ${isNearest}</div>
+              <div style="font-size:0.78rem;color:var(--muted);margin-top:2px;">${p.service_type_display} ${p.is_24_7 ? '• 24/7' : ''}</div>
+            </div>
+            <span style="font-size:1.3rem;">${iconStr}</span>
+          </div>
+          <div style="display:flex;gap:12px;font-size:0.78rem;color:var(--muted);margin-bottom:12px;">
+            <span>📍 ${distLabel}</span><span style="color:${p.is_available ? '#34d399' : '#f87171'};">● ${p.is_available ? 'Available' : 'Busy'}</span><span style="color:#fbbf24;">★ ${p.rating||'New'}</span>
+          </div>
+          <button class="btn btn-primary-glass" style="width:100%;padding:9px;" onclick="openServiceReq(${p.id})">Request Service</button>
+        </div>
+      `;
+    });
+
+    listContainer.innerHTML = html;
+
+  } catch(e) {
+    console.error("Failed to fetch nearby providers", e);
+  }
+}
+// Fallback: fetch all active providers (no GPS needed)
+async function fetchAllProviders() {
+  try {
+    const res = await fetch('/api/v1/services/providers/?format=json');
+    if(!res.ok) return;
+    const data = await res.json();
+    const providers = data.results || data;
+
+    providerMarkers.forEach(m => map.removeLayer(m));
+    providerMarkers = [];
+
+    const listContainer = document.getElementById('dynamicProvidersList');
+    if(!providers.length) {
+      listContainer.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted);">No service providers registered yet.</div>';
+      return;
+    }
+
+    let html = '';
+    providers.forEach((p, index) => {
+      window.providersMap[p.id] = p;
+      const firstType = p.service_types && p.service_types.length ? p.service_types[0].name.toLowerCase() : '';
+      const iconStr   = firstType.includes('tow') ? '🚛' : (firstType.includes('mech') ? '⚡' : (firstType.includes('fuel') ? '⛽' : '🔧'));
+      const iconColor = firstType.includes('tow') ? '#6366f1' : (firstType.includes('mech') ? '#f59e0b' : (firstType.includes('fuel') ? '#f97316' : '#10b981'));
+      const displayName = p.service_types && p.service_types.length ? p.service_types.map(t=>t.name).join(', ') : 'General Service';
+
+      if(p.latitude && p.longitude) {
+        const m = L.marker([parseFloat(p.latitude), parseFloat(p.longitude)], {icon: makeIcon(iconColor)}).addTo(map);
+        m.bindPopup(`<div style="font-family:'Inter',sans-serif;min-width:180px;line-height:1.5;">
+          <div style="font-weight:700;font-size:0.95rem;">${p.business_name}</div>
+          <div style="font-size:0.75rem;color:#64748b;margin-bottom:8px;">${displayName}</div>
+          <div style="font-size:0.8rem;margin-bottom:4px;"><b style="color:#2563eb;">₹${p.base_fee||'N/A'}</b> &nbsp;★${p.rating||'New'} &nbsp;📍${p.city}</div>
+          <div style="font-size:0.73rem;color:#64748b;margin-bottom:10px;">🕐${p.is_24_7 ? '24/7' : 'Standard Hours'} &nbsp;📞${p.phone||'—'}</div>
+          <button onclick="openServiceReq(${p.id})" style="width:100%;background:#2563eb;color:#fff;border:none;padding:8px;border-radius:8px;cursor:pointer;font-size:0.82rem;font-weight:600;">Request Service</button></div>`,{maxWidth:220});
+        const cid = 'card_' + p.id;
+        m.on('click',()=>{document.querySelectorAll('.service-card').forEach(c=>c.classList.remove('featured'));document.getElementById(cid)?.classList.add('featured');});
+        providerMarkers.push(m);
+        if(index===0) map.setView([parseFloat(p.latitude), parseFloat(p.longitude)], 12);
+      }
+
+      const isFeatured = index===0 ? 'featured':'';
+      const cardId = 'card_' + p.id;
+      html += `
+        <div class="glass card card-sm service-card ${isFeatured} glass-specular" id="${cardId}">
+          <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+            <div>
+              <div style="font-weight:700;color:var(--text);font-size:0.95rem;">${p.business_name}</div>
+              <div style="font-size:0.78rem;color:var(--muted);margin-top:2px;">${displayName} ${p.is_24_7 ? '• 24/7' : ''}</div>
+            </div>
+            <span style="font-size:1.3rem;">${iconStr}</span>
+          </div>
+          <div style="display:flex;gap:12px;font-size:0.78rem;color:var(--muted);margin-bottom:12px;">
+            <span>📍 ${p.city}</span>
+            <span style="color:${p.is_available ? '#34d399' : '#f87171'};">● ${p.is_available ? 'Available' : 'Busy'}</span>
+            <span style="color:#fbbf24;">★ ${p.rating||'New'}</span>
+          </div>
+          <button class="btn btn-primary-glass" style="width:100%;padding:9px;" onclick="openServiceReq(${p.id})">Request Service</button>
+        </div>`;
+    });
+    listContainer.innerHTML = html;
+  } catch(e) {
+    console.error('Failed to fetch providers', e);
+  }
+}
+
+let userMarker, userCircle;
+let lastLat = null, lastLon = null;
+
+// Always load all providers immediately on page load
+fetchAllProviders();
+
+if(navigator.geolocation){
+  navigator.geolocation.watchPosition(pos=>{
+    const{latitude:lat,longitude:lon}=pos.coords;
+    if(userMarker) map.removeLayer(userMarker);
+    if(userCircle) map.removeLayer(userCircle);
+    userMarker = L.marker([lat,lon],{icon:makeIcon('#3b82f6',20)}).addTo(map).bindPopup('<b>📍 You are here</b>');
+    userCircle = L.circle([lat,lon],{radius:2000,color:'#3b82f6',weight:1.5,fillColor:'#3b82f6',fillOpacity:0.05,dashArray:'6 6'}).addTo(map);
+    map.setView([lat,lon],13);
+    document.getElementById('eLocation').value=`Lat: ${lat.toFixed(5)}, Lon: ${lon.toFixed(5)}`;
+
+    // Switch to nearby (GPS-sorted) providers when we have location
+    if(!lastLat || Math.abs(lat - lastLat) > 0.005 || Math.abs(lon - lastLon) > 0.005) {
+      lastLat = lat; lastLon = lon;
+      fetchNearbyProviders(lat, lon);
+    }
+
+    document.getElementById('gpsLabel').textContent = 'Live Tracking Active';
+    document.getElementById('gpsLabel').style.color = '#34d399';
+    document.getElementById('gpsDot').style.background = '#10b981';
+    document.getElementById('gpsDot').style.animation = 'none';
+  }, err => {
+    document.getElementById('gpsLabel').textContent = 'GPS Disabled — Showing All Providers';
+    document.getElementById('gpsLabel').style.color = '#fbbf24';
+    document.getElementById('gpsDot').style.background = '#f59e0b';
+    document.getElementById('gpsDot').style.animation = 'none';
+    // fetchAllProviders already called above — no need to call again
+  }, {enableHighAccuracy:true, maximumAge:10000, timeout:5000});
+} else {
+  document.getElementById('gpsLabel').textContent = 'GPS Not Supported';
+}
+
+// Emergency form
+document.getElementById('emergencyForm').addEventListener('submit',async function(e){
+  e.preventDefault();
+  const btn=document.getElementById('eBtn');
+  btn.innerHTML='<span class="spinner"></span> Submitting…';btn.disabled=true;
+  const payload={requester_name:document.getElementById('eName').value,requester_phone:document.getElementById('ePhone').value,location_address:document.getElementById('eLocation').value||'Not provided',vehicle_type:document.getElementById('eVehicle').value,issue_type:document.getElementById('eIssue').value,notes:document.getElementById('eNotes').value};
+  try{
+    const res=await fetch('/api/v1/emergency/requests/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify(payload)});
+    if(res.ok){
+      const data=await res.json();
+      startRealTracker(data.id);
+      showToast('✅ Emergency request submitted!');btn.textContent='✅ Request Submitted';
+    }
+    else{showToast('❌ Submission failed.');btn.textContent='🚨 Dispatch Emergency Help';btn.disabled=false;}
+  }catch{showToast('❌ Network error.');btn.textContent='🚨 Dispatch Emergency Help';btn.disabled=false;}
+});
+
+let trackerInterval = null;
+function startRealTracker(reqId){
+  if(trackerInterval) clearInterval(trackerInterval);
+  localStorage.setItem('rr_active_req', reqId);
+  document.getElementById('liveBadge').textContent='Live';
+  document.getElementById('liveBadge').classList.remove('badge-warning-glass');
+  document.getElementById('liveBadge').classList.add('badge-success-glass');
+  
+  const fmt=d=>d?new Date(d).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}):'—';
+  
+  const updateTracker = async () => {
+    try {
+      const res = await fetch('/api/v1/emergency/requests/'+reqId+'/track/');
+      if(res.ok) {
+        const data = await res.json();
+        const lvls = {'pending':1,'assigned':2,'en_route':3,'in_progress':4,'completed':5,'cancelled':0};
+        const curr = lvls[data.status] || 1;
+        
+        for(let i=1; i<=5; i++){
+          let el = document.getElementById('dot'+i);
+          if(!el) continue;
+          if(curr === 0) { el.className = 't-dot done'; el.style.background = '#f87171'; continue; } // Cancelled
+          if(i < curr) el.className = 't-dot done';
+          else if(i === curr) el.className = 't-dot active';
+          else el.className = 't-dot';
+        }
+        
+        document.getElementById('time1').textContent = fmt(data.created_at);
+        if(curr >= 2) document.getElementById('time2').textContent = fmt(data.updated_at);
+        if(curr >= 3) {
+          document.getElementById('time3').textContent = fmt(data.updated_at);
+          document.getElementById('note3').textContent = 'Technician dispatched.';
+          if(data.dispatch && data.dispatch.technician_name) {
+             document.getElementById('note3').textContent = `Tech: ${data.dispatch.technician_name} (${data.dispatch.technician_phone})`;
+          } else if(data.assigned_provider) {
+             document.getElementById('note3').textContent = 'Provider assigned.';
+          }
+        }
+        if(curr >= 4) document.getElementById('time4').textContent = fmt(data.updated_at);
+        if(curr === 5) document.getElementById('time5').textContent = fmt(data.updated_at);
+        
+        if(curr === 5 || curr === 0) {
+          clearInterval(trackerInterval);
+          localStorage.removeItem('rr_active_req');
+        }
+      } else {
+         // Not found or error
+         clearInterval(trackerInterval);
+         localStorage.removeItem('rr_active_req');
+      }
+    } catch(e){}
+  };
+  updateTracker();
+  trackerInterval = setInterval(updateTracker, 3000);
+}
+
+// Resume tracking on load if exists
+const activeReq = localStorage.getItem('rr_active_req');
+if(activeReq) {
+  startRealTracker(activeReq);
+}
+
+
+// Scroll animations
+const obs=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');}),{threshold:0.1});
+document.querySelectorAll('.fade-up').forEach(el=>obs.observe(el));
+
+// ── Auth-aware navbar ────────────────────────────────────────────────────
+(function(){
+  const token = localStorage.getItem('rr_access');
+  const slot  = document.getElementById('navAuthSlot');
+  if (!token || !slot) return;
+
+  let user = {};
+  try { user = JSON.parse(localStorage.getItem('rr_user') || '{}'); } catch {}
+
+  const full = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || 'You';
+  const ini  = (full[0] || '?').toUpperCase();
+
+  slot.innerHTML = `
+    <a href="/dashboard/" style="display:flex;align-items:center;gap:8px;
+      background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.22);
+      border-radius:9999px;padding:5px 14px 5px 5px;text-decoration:none;
+      color:var(--text);font-size:0.85rem;font-weight:600;transition:background 0.2s;"
+      onmouseover="this.style.background='rgba(255,255,255,0.18)'"
+      onmouseout="this.style.background='rgba(255,255,255,0.10)'">
+      <div style="width:30px;height:30px;border-radius:50%;background:rgba(37,99,235,0.55);
+        border:2px solid rgba(96,165,250,0.6);display:flex;align-items:center;
+        justify-content:center;font-size:0.78rem;font-weight:800;color:var(--text);flex-shrink:0;">
+        ${ini}
+      </div>
+      ${full}
+    </a>
+    <button onclick="doLogout()" style="padding:7px 16px;background:rgba(255,255,255,0.10);
+      border:1px solid rgba(255,255,255,0.22);border-radius:9999px;color:var(--muted);
+      font-family:'Inter',sans-serif;font-size:0.82rem;font-weight:500;cursor:pointer;
+      transition:all 0.2s;"
+      onmouseover="this.style.background='rgba(239,68,68,0.30)';this.style.color='#fff'"
+      onmouseout="this.style.background='rgba(255,255,255,0.10)';this.style.color='rgba(255,255,255,0.75)'">
+      Sign Out
+    </button>`;
+})();
+
+function doLogout(){
+  localStorage.removeItem('rr_access');
+  localStorage.removeItem('rr_refresh');
+  localStorage.removeItem('rr_user');
+  window.location.href = '/login/';
+}
+</script>
+<script src="{% static 'js/liquid-bg.js' %}"></script>
+<script>
+// ── Theme Toggle ─────────────────────────────────────────────────────
+(function(){
+  const saved = localStorage.getItem('rr_theme') || 'dark';
+  if(saved === 'light') document.body.setAttribute('data-theme','light');
+  const btn = document.getElementById('themeToggle');
+  if(btn) {
+    btn.textContent = saved === 'light' ? '☀️' : '🌙';
+    btn.addEventListener('click', function(){
+      const curr = document.body.getAttribute('data-theme');
+      const next = curr === 'light' ? 'dark' : 'light';
+      if(next === 'dark') document.body.removeAttribute('data-theme');
+      else document.body.setAttribute('data-theme', 'light');
+      localStorage.setItem('rr_theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+    });
+  }
+})();
+// ── Mobile Nav ────────────────────────────────────────────────────────
+function closeMobileNav(){
+  document.getElementById('mobileNav').classList.remove('open');
+  document.getElementById('hamburger').classList.remove('open');
+}
+document.getElementById('hamburger').addEventListener('click',function(){
+  this.classList.toggle('open');
+  document.getElementById('mobileNav').classList.toggle('open');
+});
+document.getElementById('mobileNavClose').addEventListener('click', closeMobileNav);
+
+// ── Reviews Section ───────────────────────────────────────────────────
+async function loadReviews() {
+  const grid = document.getElementById('reviewsGrid');
+  try {
+    const res = await fetch('/api/v1/services/reviews/');
+    if (!res.ok) throw new Error('Failed: ' + res.status);
+    const reviews = await res.json();
+
+    if (!reviews.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--muted);">No reviews yet. Be the first to leave one!</div>';
+      return;
+    }
+
+    // Shuffle and cap at 6
+    const shuffled = reviews.sort(() => Math.random() - 0.5).slice(0, 6);
+
+    grid.innerHTML = shuffled.map(rv => {
+      const stars = '★'.repeat(rv.rating) + '☆'.repeat(5 - rv.rating);
+      const name = rv.user_name || 'Anonymous';
+      const initials = name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase() || '?';
+      const ago = timeAgo(rv.created_at);
+      const comment = rv.comment ? rv.comment.slice(0, 160) + (rv.comment.length > 160 ? '…' : '') : 'Great service!';
+      const colors = [
+        'rgba(59,130,246,0.35),rgba(139,92,246,0.35)',
+        'rgba(16,185,129,0.35),rgba(59,130,246,0.35)',
+        'rgba(245,158,11,0.35),rgba(239,68,68,0.35)',
+        'rgba(139,92,246,0.35),rgba(236,72,153,0.35)',
+      ];
+      const grad = colors[rv.id % colors.length];
+      return `
+        <div class="glass card glass-specular fade-up" style="padding:22px;display:flex;flex-direction:column;gap:14px;border-radius:16px;transition:transform 0.25s,box-shadow 0.25s;" onmouseover="this.style.transform='translateY(-5px)';this.style.boxShadow='0 16px 40px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,${grad});display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.95rem;color:#e2e8f0;flex-shrink:0;letter-spacing:0.5px;">${initials}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:700;color:var(--text);font-size:0.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}</div>
+              <div style="font-size:0.72rem;color:var(--muted);margin-top:1px;">via <span style="color:#93c5fd;">${rv.provider_name}</span>${rv.provider_city ? ' · ' + rv.provider_city : ''}</div>
+            </div>
+            <div style="font-size:0.72rem;color:var(--muted);white-space:nowrap;flex-shrink:0;">${ago}</div>
+          </div>
+          <div style="color:#f59e0b;font-size:1.05rem;letter-spacing:3px;line-height:1;">${stars}</div>
+          <p style="color:var(--muted);font-size:0.875rem;line-height:1.65;margin:0;font-style:italic;">"${comment}"</p>
+        </div>`;
+    }).join('');
+
+    // Observe newly added .fade-up cards so they animate and become visible
+    grid.querySelectorAll('.fade-up').forEach(el => obs.observe(el));
+
+  } catch(e) {
+    console.error('Reviews error:', e);
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--muted);">Could not load reviews right now.</div>';
+  }
+}
+
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 2) return 'just now';
+  if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  const d = Math.floor(h / 24);
+  if (d < 30) return d + 'd ago';
+  return Math.floor(d/30) + 'mo ago';
+}
+
+loadReviews();
+</script>
+</body>
+</html>

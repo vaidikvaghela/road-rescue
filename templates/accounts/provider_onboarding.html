@@ -1,0 +1,344 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Provider Setup — RoadRescue</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      background: #0d1117;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 3rem 1rem 5rem;
+      -webkit-font-smoothing: antialiased;
+    }
+    #liquid-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; width: 100%; height: 100%; }
+    .brand { position: relative; z-index: 10; text-decoration: none; display: flex; align-items: center; gap: 4px;
+      font-size: 1.5rem; font-weight: 800; color:var(--text); letter-spacing: -0.03em; margin-bottom: 2rem; }
+    .brand span { color: #93c5fd; }
+    .card {
+      position: relative; z-index: 10; width: 100%; max-width: 680px;
+      padding: 2.5rem; border-radius: 24px;
+      background: rgba(18, 24, 42, 0.70);
+      backdrop-filter: blur(32px) saturate(140%);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-top-color:var(--muted);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.40);
+    }
+    .card-icon { width: 56px; height: 56px; border-radius: 16px; background: rgba(245,158,11,0.25);
+      border: 1px solid rgba(253,211,77,0.45); display: flex; align-items: center;
+      justify-content: center; font-size: 1.5rem; margin: 0 auto 1.2rem; }
+    .card-title { font-size: 1.6rem; font-weight: 800; color:var(--text); letter-spacing: -0.03em; text-align: center; margin-bottom: 4px; }
+    .card-sub { font-size: 0.875rem; color:var(--muted); text-align: center; margin-bottom: 2rem; }
+    .sec-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+      color:var(--muted); border-bottom: 1px solid rgba(255,255,255,0.10);
+      padding-bottom: 8px; margin-bottom: 1rem; margin-top: 1.5rem; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-group { margin-bottom: 1rem; }
+    .form-label { display: block; font-size: 0.78rem; font-weight: 600; color:var(--muted); margin-bottom: 6px; }
+    .form-control {
+      width: 100%; background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 12px; padding: 12px 16px; color:var(--text);
+      font-family: 'Inter', sans-serif; font-size: 0.95rem; outline: none;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    }
+    .form-control::placeholder { color:var(--muted); }
+    .form-control:focus { background: rgba(255,255,255,0.12); border-color: rgba(245,158,11,0.60);
+      box-shadow: 0 0 0 3px rgba(245,158,11,0.20); }
+    .form-control option { background: #1a2035; color:var(--text); }
+    .service-types { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+    .st-chip {
+      padding: 7px 14px; border-radius: 999px; cursor: pointer;
+      background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.18);
+      font-size: 0.82rem; font-weight: 600; color:var(--muted); transition: all 0.2s;
+    }
+    .st-chip.selected { background: rgba(245,158,11,0.25); border-color: rgba(253,211,77,0.55); color: #fde68a; }
+    .st-chip:hover { background: rgba(255,255,255,0.12); }
+    .btn-submit {
+      width: 100%; padding: 13px;
+      background: rgba(245,158,11,0.60); border: 1px solid rgba(253,211,77,0.45);
+      border-top-color: rgba(253,211,77,0.80); border-radius: 12px;
+      color:var(--text); font-family: 'Inter', sans-serif;
+      font-size: 0.97rem; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all 0.22s; box-shadow: 0 4px 20px rgba(245,158,11,0.30); margin-top: 1.5rem;
+    }
+    .btn-submit:hover { background: rgba(245,158,11,0.80); transform: translateY(-1px); }
+    .btn-submit:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+    .alert { padding: 11px 14px; border-radius: 10px; font-size: 0.85rem;
+      margin-bottom: 1rem; display: none; align-items: center; gap: 10px; }
+    .alert.show { display: flex; }
+    .alert-error   { background: rgba(239,68,68,0.18);  border: 1px solid rgba(252,165,165,0.28); color: #fca5a5; }
+    .alert-success { background: rgba(16,185,129,0.18); border: 1px solid rgba(52,211,153,0.28);  color: #a7f3d0; }
+    .skip-link { text-align: center; font-size: 0.875rem; color:var(--muted); margin-top: 1.2rem; }
+    .skip-link a { color: #93c5fd; text-decoration: none; font-weight: 500; }
+    .steps { display: flex; justify-content: center; gap: 8px; margin-bottom: 2rem; }
+    .step-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.2); }
+    .step-dot.active { background: #f59e0b; transform: scale(1.3); }
+    .step-dot.done { background: #10b981; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { width: 17px; height: 17px; display: inline-block;
+      border: 2px solid rgba(255,255,255,0.30); border-top-color:var(--text);
+      border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @media(max-width: 520px) { .form-row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<canvas id="liquid-canvas"></canvas>
+<a href="/" class="brand">Road<span>Rescue</span></a>
+
+<div class="card">
+  <div class="card-icon">🔧</div>
+  <div class="card-title">Set Up Your Provider Profile</div>
+  <div class="card-sub">Complete your business info so customers can find and book you</div>
+
+  <div class="steps">
+    <div class="step-dot done" title="Account created"></div>
+    <div class="step-dot active" title="Business info"></div>
+    <div class="step-dot" title="Dashboard"></div>
+  </div>
+
+  <div class="alert alert-error" id="alertError"><span>⚠️</span><span id="alertMsg">Something went wrong.</span></div>
+  <div class="alert alert-success" id="alertSuccess"><span>✅</span><span id="successMsg">Profile saved! Redirecting…</span></div>
+
+  <form id="onboardForm" novalidate>
+    <div class="sec-label">Business Information</div>
+    <div class="form-group">
+      <label class="form-label" for="businessName">Business / Shop Name *</label>
+      <input type="text" class="form-control" id="businessName" placeholder="e.g. Quick Fix Auto Care" required/>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="bPhone">Contact Phone *</label>
+        <input type="tel" class="form-control" id="bPhone" placeholder="+91 98765 43210" required/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="bEmail">Business Email *</label>
+        <input type="email" class="form-control" id="bEmail" placeholder="shop@example.com" required/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="bDesc">Description</label>
+      <textarea class="form-control" id="bDesc" rows="2" placeholder="What services do you offer?"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="baseFee">Base Service Fee (₹)</label>
+      <input type="number" class="form-control" id="baseFee" placeholder="e.g. 499" min="0"/>
+    </div>
+
+    <div class="sec-label">Location</div>
+    <div class="form-group">
+      <label class="form-label" for="bAddress">Street Address *</label>
+      <input type="text" class="form-control" id="bAddress" placeholder="123 Main Road" required/>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="bCity">City *</label>
+        <input type="text" class="form-control" id="bCity" placeholder="Mumbai" required/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="bState">State *</label>
+        <input type="text" class="form-control" id="bState" placeholder="Maharashtra" required/>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="bPincode">Pincode *</label>
+        <input type="text" class="form-control" id="bPincode" placeholder="400001" required/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="bLat">Latitude (for map)</label>
+        <input type="number" class="form-control" id="bLat" placeholder="19.0760" step="0.000001"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="bLon">Longitude (for map)</label>
+      <input type="number" class="form-control" id="bLon" placeholder="72.8777" step="0.000001"/>
+    </div>
+    <div style="margin-top:0.5rem;">
+      <button type="button" onclick="geolocate()" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);border-radius:10px;padding:8px 16px;color:var(--muted);font-size:0.82rem;cursor:pointer;">
+        📍 Use my current location
+      </button>
+    </div>
+
+    <div class="sec-label">Service Types</div>
+    <div class="service-types" id="serviceTypes">
+      <span style="color:var(--muted);font-size:0.85rem;">Loading…</span>
+    </div>
+
+    <div class="sec-label">Availability</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="openTime">Opening Time</label>
+        <input type="time" class="form-control" id="openTime" value="09:00"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="closeTime">Closing Time</label>
+        <input type="time" class="form-control" id="closeTime" value="18:00"/>
+      </div>
+    </div>
+    <label style="display:flex;align-items:center;gap:10px;font-size:0.85rem;color:var(--muted);cursor:pointer;margin-bottom:1rem;">
+      <input type="checkbox" id="is247" style="accent-color:#f59e0b;width:15px;height:15px;"/>
+      Open 24/7 (overrides hours above)
+    </label>
+
+    <button type="submit" class="btn-submit" id="submitBtn">Complete Setup →</button>
+  </form>
+  <div class="skip-link">
+    <a href="/dashboard/">Skip for now →</a>
+  </div>
+</div>
+
+<script>
+  const CSRF  = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+  const token = localStorage.getItem('rr_access');
+  if (!token) window.location.href = '/login/';
+
+  let selectedTypes = [];
+
+  // Load service types
+  async function loadServiceTypes() {
+    try {
+      const res = await fetch('/api/v1/auth/provider/profile/', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const data = await res.json();
+      const types = data.service_types || [];
+      const existing = data.profile?.service_types || [];
+
+      // Pre-fill existing profile data
+      if (data.profile) {
+        const p = data.profile;
+        document.getElementById('businessName').value = p.business_name || '';
+        document.getElementById('bPhone').value  = p.phone  || '';
+        document.getElementById('bEmail').value  = p.email  || '';
+        document.getElementById('bDesc').value   = p.description || '';
+        document.getElementById('bAddress').value = p.address || '';
+        document.getElementById('bCity').value   = p.city   || '';
+        document.getElementById('bState').value  = p.state  || '';
+        document.getElementById('bPincode').value = p.pincode || '';
+        document.getElementById('bLat').value    = p.latitude  || '';
+        document.getElementById('bLon').value    = p.longitude || '';
+        document.getElementById('baseFee').value = p.base_fee  || '';
+        document.getElementById('openTime').value  = p.opening_time  || '09:00';
+        document.getElementById('closeTime').value = p.closing_time  || '18:00';
+        document.getElementById('is247').checked = p.is_24_7 || false;
+        selectedTypes = existing.map(t => t.id);
+      }
+
+      const container = document.getElementById('serviceTypes');
+      container.innerHTML = '';
+      types.forEach(t => {
+        const chip = document.createElement('div');
+        chip.className = 'st-chip' + (selectedTypes.includes(t.id) ? ' selected' : '');
+        chip.textContent = t.icon + ' ' + t.name;
+        chip.dataset.id = t.id;
+        chip.onclick = () => {
+          const idx = selectedTypes.indexOf(t.id);
+          if (idx === -1) { selectedTypes.push(t.id); chip.classList.add('selected'); }
+          else { selectedTypes.splice(idx, 1); chip.classList.remove('selected'); }
+        };
+        container.appendChild(chip);
+      });
+      if (!types.length) container.innerHTML = '<span style="color:var(--muted);">No service types configured yet. Admin can add them.</span>';
+    } catch(e) {
+      console.error(e);
+    }
+  }
+
+  function geolocate() {
+    if (!navigator.geolocation) { alert('Geolocation not supported.'); return; }
+    navigator.geolocation.getCurrentPosition(pos => {
+      document.getElementById('bLat').value = pos.coords.latitude.toFixed(6);
+      document.getElementById('bLon').value = pos.coords.longitude.toFixed(6);
+    }, () => alert('Could not get location.'));
+  }
+
+  document.getElementById('onboardForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const alertErr = document.getElementById('alertError');
+    const alertOk  = document.getElementById('alertSuccess');
+    alertErr.classList.remove('show');
+    alertOk.classList.remove('show');
+
+    const v = id => document.getElementById(id).value.trim();
+    if (!v('businessName') || !v('bPhone') || !v('bEmail') || !v('bAddress') || !v('bCity') || !v('bState') || !v('bPincode')) {
+      document.getElementById('alertMsg').textContent = 'Please fill in all required fields.';
+      alertErr.classList.add('show');
+      return;
+    }
+
+    btn.innerHTML = '<span class="spinner"></span> Saving…';
+    btn.disabled = true;
+
+    try {
+      const payload = {
+        business_name: v('businessName'),
+        phone:         v('bPhone'),
+        email:         v('bEmail'),
+        description:   v('bDesc'),
+        address:       v('bAddress'),
+        city:          v('bCity'),
+        state:         v('bState'),
+        pincode:       v('bPincode'),
+        latitude:      v('bLat')  || null,
+        longitude:     v('bLon')  || null,
+        base_fee:      v('baseFee') || 0,
+        opening_time:  document.getElementById('openTime').value  || null,
+        closing_time:  document.getElementById('closeTime').value || null,
+        is_24_7:       document.getElementById('is247').checked,
+        is_available:  true,
+        service_types: selectedTypes,
+      };
+
+      const res = await fetch('/api/v1/auth/provider/profile/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'X-CSRFToken': CSRF },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        document.getElementById('successMsg').textContent = 'Profile saved! Redirecting to dashboard…';
+        alertOk.classList.add('show');
+        setTimeout(() => window.location.href = '/dashboard/', 1600);
+      } else {
+        document.getElementById('alertMsg').textContent = data.error || data.detail || 'Save failed. Please check your inputs.';
+        alertErr.classList.add('show');
+        btn.innerHTML = 'Complete Setup →';
+        btn.disabled = false;
+      }
+    } catch {
+      document.getElementById('alertMsg').textContent = 'Network error. Please try again.';
+      alertErr.classList.add('show');
+      btn.innerHTML = 'Complete Setup →';
+      btn.disabled = false;
+    }
+  });
+
+  loadServiceTypes();
+
+  /* Liquid background */
+  (function(){
+    const canvas=document.getElementById('liquid-canvas'),ctx=canvas.getContext('2d');
+    let W,H;
+    function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
+    resize();window.addEventListener('resize',resize);
+    const mouse={x:W/2,y:H/2};
+    window.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;});
+    const PALETTE=[[245,158,11],[251,191,36],[234,88,12],[168,85,247],[59,130,246]];
+    class Blob{constructor(i){this.i=i;this.r=Math.min(W,H)*(0.20+Math.random()*0.16);this.color=PALETTE[i%PALETTE.length];this.angle=(i/5)*Math.PI*2;this.orbitR=Math.min(W,H)*(0.14+Math.random()*0.12);this.x=W/2+Math.cos(this.angle)*this.orbitR;this.y=H/2+Math.sin(this.angle)*this.orbitR;this.vx=0;this.vy=0;this.mPhase=Math.random()*Math.PI*2;this.spd=0.5+Math.random()*0.8;}
+    update(){this.angle+=0.00045*this.spd;const tx=W/2+Math.cos(this.angle)*this.orbitR,ty=H/2+Math.sin(this.angle)*this.orbitR;const dx=this.x-mouse.x,dy=this.y-mouse.y,d=Math.sqrt(dx*dx+dy*dy)||1;if(d<200){const f=(200-d)/200*0.06;this.vx+=(dx/d)*f*this.r*0.4;this.vy+=(dy/d)*f*this.r*0.4;}this.vx+=(tx-this.x)*0.014;this.vy+=(ty-this.y)*0.014;this.vx*=0.88;this.vy*=0.88;this.x+=this.vx;this.y+=this.vy;this.mPhase+=0.0009*this.spd;}
+    draw(){const[r,g,b]=this.color,pts=10;ctx.beginPath();for(let i=0;i<=pts;i++){const a=(i/pts)*Math.PI*2,w=Math.sin(a*2+this.mPhase)*0.35*this.r*0.42+Math.sin(a*3+this.mPhase*0.8)*0.35*this.r*0.22,rad=this.r+w,px=this.x+Math.cos(a)*rad,py=this.y+Math.sin(a)*rad;i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}ctx.closePath();const g2=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.r*1.2);g2.addColorStop(0,`rgba(${r},${g},${b},0.65)`);g2.addColorStop(1,`rgba(${r},${g},${b},0)`);ctx.fillStyle=g2;ctx.fill();}}
+    const blobs=Array.from({length:5},(_,i)=>new Blob(i));
+    function loop(){ctx.clearRect(0,0,W,H);ctx.save();ctx.filter='blur(65px)';blobs.forEach(b=>{b.update();b.draw();});ctx.restore();requestAnimationFrame(loop);}
+    requestAnimationFrame(loop);
+  })();
+</script>
+</body>
+</html>

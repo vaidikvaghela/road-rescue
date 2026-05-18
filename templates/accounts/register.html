@@ -1,0 +1,548 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Register — RoadRescue</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center;
+      padding: 3rem 1rem 4rem;
+      -webkit-font-smoothing: antialiased;
+      background: #0d1117;
+    }
+    #liquid-canvas {
+      position: fixed; inset: 0; z-index: 0;
+      pointer-events: none; width: 100%; height: 100%;
+    }
+    .brand {
+      position: relative; z-index: 10;
+      text-decoration: none;
+      display: flex; align-items: center; gap: 4px;
+      font-size: 1.5rem; font-weight: 800;
+      color:var(--text); letter-spacing: -0.03em;
+      margin-bottom: 2rem;
+    }
+    .brand span { color: #93c5fd; }
+
+    /* ── Card ─────────────────────────────────────── */
+    .auth-card {
+      position: relative; z-index: 10;
+      width: 100%; max-width: 560px;
+      padding: 2.5rem;
+      border-radius: 24px;
+      background: rgba(18, 24, 42, 0.65);
+      backdrop-filter: blur(32px) saturate(140%);
+      -webkit-backdrop-filter: blur(32px) saturate(140%);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-top-color:var(--muted);
+      box-shadow:
+        0 8px 40px rgba(0,0,0,0.40),
+        inset 0 1px 0 rgba(255,255,255,0.40),
+        inset 0 -1px 0 rgba(255,255,255,0.05);
+    }
+    .card-icon {
+      width: 56px; height: 56px; border-radius: 16px;
+      background: rgba(37,99,235,0.28); border: 1px solid rgba(96,165,250,0.45);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; margin: 0 auto 1.2rem;
+    }
+    .card-title { font-size:1.6rem; font-weight:800; color:var(--text); letter-spacing:-0.03em; text-align:center; margin-bottom:4px; }
+    .card-sub   { font-size:0.875rem; color:var(--muted); text-align:center; margin-bottom:2rem; }
+
+    /* ── Role selector ────────────────────────────── */
+    .role-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:1.5rem; }
+    .role-option {
+      border-radius:14px; padding:18px 12px; cursor:pointer; text-align:center;
+      background:rgba(255,255,255,0.08); border:2px solid rgba(255,255,255,0.18);
+      transition:all 0.2s;
+    }
+    .role-option:hover { background:rgba(255,255,255,0.11); border-color:var(--muted); }
+    .role-option.selected { background:rgba(37,99,235,0.25); border-color:rgba(96,165,250,0.55); }
+    .role-icon { font-size:1.8rem; margin-bottom:6px; }
+    .role-name { font-weight:700; font-size:0.9rem; color:var(--text); }
+    .role-desc { font-size:0.75rem; color:var(--muted); margin-top:3px; }
+
+    /* ── Section label ────────────────────────────── */
+    .sec-label {
+      font-size:0.7rem; font-weight:700; letter-spacing:0.09em; text-transform:uppercase;
+      color:var(--muted); border-bottom:1px solid rgba(255,255,255,0.10);
+      padding-bottom:8px; margin-bottom:1rem; margin-top:1.5rem;
+    }
+
+    /* ── Form ─────────────────────────────────────── */
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .form-group { margin-bottom:1rem; }
+    .form-label { display:block; font-size:0.78rem; font-weight:600; color:var(--muted); margin-bottom:6px; }
+    .form-control {
+      width:100%; background:rgba(255,255,255,0.10); border:1px solid rgba(255,255,255,0.22);
+      border-radius:12px; padding:12px 16px; color:var(--text);
+      font-family:'Inter',sans-serif; font-size:0.95rem; outline:none;
+      transition:border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    }
+    .form-control::placeholder { color:var(--muted); }
+    .form-control:focus {
+      background:rgba(255,255,255,0.12); border-color:rgba(96,165,250,0.60);
+      box-shadow:0 0 0 3px rgba(37,99,235,0.20);
+    }
+    .form-control.invalid { border-color:rgba(252,165,165,0.55); }
+    .field-error { font-size:0.78rem; color:#fca5a5; margin-top:4px; display:none; }
+    .field-error.show { display:block; }
+
+    /* Pwd strength */
+    .pwd-wrap { position:relative; }
+    .pwd-toggle {
+      position:absolute; right:14px; top:50%; transform:translateY(-50%);
+      background:none; border:none; cursor:pointer;
+      font-size:1rem; color:var(--muted); padding:0;
+    }
+    .pwd-bar  { height:3px; border-radius:2px; background:rgba(255,255,255,0.10); overflow:hidden; margin-top:6px; }
+    .pwd-fill { height:100%; width:0%; border-radius:2px; transition:width 0.3s, background 0.3s; }
+    .pwd-hint { font-size:0.75rem; color:var(--muted); margin-top:5px; }
+
+    /* ── Terms ────────────────────────────────────── */
+    .terms-row {
+      display:flex; align-items:flex-start; gap:10px;
+      font-size:0.85rem; color:var(--muted);
+      margin:1.25rem 0; cursor:pointer;
+    }
+    .terms-row input { accent-color:#3b82f6; width:15px; height:15px; margin-top:2px; flex-shrink:0; }
+    .terms-row a { color:#93c5fd; text-decoration:none; }
+
+    /* ── Submit ───────────────────────────────────── */
+    .btn-submit {
+      width:100%; padding:13px;
+      background:rgba(37,99,235,0.60); border:1px solid rgba(96,165,250,0.45);
+      border-top-color:rgba(147,197,253,0.65); border-radius:12px;
+      color:var(--text); font-family:'Inter',sans-serif;
+      font-size:0.97rem; font-weight:600; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      transition:all 0.22s; box-shadow:0 4px 20px rgba(37,99,235,0.30);
+    }
+    .btn-submit:hover { background:rgba(37,99,235,0.80); transform:translateY(-1px); }
+    .btn-submit:disabled { opacity:0.55; cursor:not-allowed; transform:none; }
+
+    /* ── Alerts ───────────────────────────────────── */
+    .alert {
+      padding:11px 14px; border-radius:10px; font-size:0.85rem;
+      margin-bottom:1rem; display:none; align-items:center; gap:10px;
+    }
+    .alert.show { display:flex; }
+    .alert-error   { background:rgba(239,68,68,0.18);  border:1px solid rgba(252,165,165,0.28); color:#fca5a5; }
+    .alert-success { background:rgba(16,185,129,0.18); border:1px solid rgba(52,211,153,0.28);  color:#a7f3d0; }
+
+    /* ── Footer ───────────────────────────────────── */
+    .card-footer-text { text-align:center; font-size:0.875rem; color:var(--muted); margin-top:1.5rem; }
+    .link-sm { color:#93c5fd; text-decoration:none; font-weight:500; }
+
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .spinner {
+      width:17px; height:17px; display:inline-block;
+      border:2px solid rgba(255,255,255,0.30); border-top-color:var(--text);
+      border-radius:50%; animation:spin 0.7s linear infinite;
+    }
+
+    @media(max-width:520px){ .form-row { grid-template-columns:1fr; } }
+    /* ── Theme Overrides ─────────────────────────── */
+    body[data-theme="light"] { background: #f0f4ff; color: #0f172a; }
+    body[data-theme="light"] .auth-card {
+      background: rgba(255, 255, 255, 0.85); border-color: rgba(0, 0, 0, 0.12);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1); color: #0f172a;
+    }
+    body[data-theme="light"] .brand,
+    body[data-theme="light"] .card-title,
+    body[data-theme="light"] .role-name { color: #0f172a; }
+    body[data-theme="light"] .card-sub,
+    body[data-theme="light"] .form-label,
+    body[data-theme="light"] .role-desc,
+    body[data-theme="light"] .sec-label,
+    body[data-theme="light"] .pwd-hint,
+    body[data-theme="light"] .terms-row,
+    body[data-theme="light"] .card-footer-text { color: rgba(15, 23, 42, 0.6); }
+    body[data-theme="light"] .form-control {
+      background: rgba(0, 0, 0, 0.04); border-color: rgba(0, 0, 0, 0.12); color: #0f172a;
+    }
+    body[data-theme="light"] .form-control:focus { background: #fff; border-color: rgba(37, 99, 235, 0.5); }
+    body[data-theme="light"] .role-option { background: rgba(0, 0, 0, 0.04); border-color: rgba(0, 0, 0, 0.08); }
+    body[data-theme="light"] .role-option:hover { background: rgba(0, 0, 0, 0.06); }
+    body[data-theme="light"] .role-option.selected { background: rgba(37, 99, 235, 0.1); border-color: rgba(37, 99, 235, 0.5); }
+    body[data-theme="light"] .sec-label { border-color: rgba(0, 0, 0, 0.08); }
+    body[data-theme="light"] .theme-toggle { background: rgba(0, 0, 0, 0.08); border-color: rgba(0, 0, 0, 0.12); color: #0f172a; }
+
+    .theme-toggle-wrap { position: fixed; top: 20px; right: 20px; z-index: 100; }
+    .theme-toggle {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2);
+      color:var(--text); display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .theme-toggle:hover { transform: scale(1.1); background: rgba(255, 255, 255, 0.2); }
+  </style>
+</head>
+<body>
+
+<div class="theme-toggle-wrap">
+  <button class="theme-toggle" id="themeToggle">🌙</button>
+</div>
+
+<canvas id="liquid-canvas"></canvas>
+
+<a href="/" class="brand">Road<span>Rescue</span></a>
+
+<div class="auth-card">
+  <div class="card-icon">🚗</div>
+  <div class="card-title">Create your account</div>
+  <div class="card-sub">Join RoadRescue — free forever for drivers</div>
+
+  <div class="alert alert-error"   id="alertError"  ><span>⚠️</span><span id="alertMsg"  >Please fix the errors below.</span></div>
+  <div class="alert alert-success" id="alertSuccess"><span>✅</span><span id="successMsg">Account created! Redirecting…</span></div>
+
+  <!-- Role -->
+  <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">I am a…</div>
+  <div class="role-grid">
+    <div class="role-option selected" id="role-customer" onclick="selectRole('customer')">
+      <div class="role-icon">🧑‍💼</div>
+      <div class="role-name">Driver</div>
+      <div class="role-desc">Find services &amp; get help</div>
+    </div>
+    <div class="role-option" id="role-provider" onclick="selectRole('provider')">
+      <div class="role-icon">🔧</div>
+      <div class="role-name">Service Provider</div>
+      <div class="role-desc">Offer repair &amp; towing</div>
+    </div>
+  </div>
+
+  <form id="registerForm" novalidate>{% csrf_token %}
+    <div class="sec-label">Personal Information</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="firstName">First Name</label>
+        <input type="text" class="form-control" id="firstName" placeholder="Rajesh" required/>
+        <div class="field-error" id="err-firstName"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="lastName">Last Name</label>
+        <input type="text" class="form-control" id="lastName" placeholder="Kumar" required/>
+        <div class="field-error" id="err-lastName"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="username">Username</label>
+      <input type="text" class="form-control" id="username" placeholder="rajesh_k" required autocomplete="username"/>
+      <div class="field-error" id="err-username"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="email">Email Address</label>
+      <input type="email" class="form-control" id="email" placeholder="rajesh@example.com" required autocomplete="email"/>
+      <div class="field-error" id="err-email"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="phone">Phone Number <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+      <input type="tel" class="form-control" id="phone" placeholder="+91 98765 43210" autocomplete="tel"/>
+    </div>
+
+    <div class="sec-label">Security</div>
+    <div class="form-group">
+      <label class="form-label" for="password">Password</label>
+      <div class="pwd-wrap">
+        <input type="password" class="form-control" id="password" placeholder="Min. 8 characters" required autocomplete="new-password" oninput="checkStrength(this.value)"/>
+        <button type="button" class="pwd-toggle" id="t1" onclick="togglePwd('password','t1')">👁️</button>
+      </div>
+      <div class="pwd-bar"><div class="pwd-fill" id="pwdFill"></div></div>
+      <div class="pwd-hint" id="pwdLabel">Enter a password</div>
+      <div class="field-error" id="err-password"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="password2">Confirm Password</label>
+      <div class="pwd-wrap">
+        <input type="password" class="form-control" id="password2" placeholder="Repeat password" required autocomplete="new-password"/>
+        <button type="button" class="pwd-toggle" id="t2" onclick="togglePwd('password2','t2')">👁️</button>
+      </div>
+      <div class="field-error" id="err-password2"></div>
+    </div>
+
+    <label class="terms-row">
+      <input type="checkbox" id="terms" required/>
+      <span>I agree to the <a href="javascript:void(0)" onclick="openTermsModal()">Terms of Service</a> and <a href="javascript:void(0)" onclick="openTermsModal()">Privacy Policy</a></span>
+    </label>
+
+    <button type="submit" class="btn-submit" id="registerBtn">Create Account →</button>
+  </form>
+
+  <div class="card-footer-text">
+    Already have an account? <a href="/login/" class="link-sm">Sign in</a>
+  </div>
+</div>
+
+<script>
+  // Already logged in? Go straight to dashboard
+  if (localStorage.getItem('rr_access')) window.location.replace('/dashboard/');
+
+  const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+  let selectedRole = 'customer';
+
+  function selectRole(r) {
+    selectedRole = r;
+    document.querySelectorAll('.role-option').forEach(o => o.classList.remove('selected'));
+    document.getElementById('role-' + r).classList.add('selected');
+  }
+
+  function togglePwd(id, btnId) {
+    const inp = document.getElementById(id);
+    const btn = document.getElementById(btnId);
+    const vis = inp.type === 'password';
+    inp.type = vis ? 'text' : 'password';
+    btn.textContent = vis ? '🙈' : '👁️';
+  }
+
+  // ── Theme Toggle Logic ─────────────────────────
+  (function(){
+    const saved = localStorage.getItem('rr_theme') || 'dark';
+    if(saved === 'light') document.body.setAttribute('data-theme','light');
+    const btn = document.getElementById('themeToggle');
+    if(btn) {
+      btn.textContent = saved === 'light' ? '☀️' : '🌙';
+      btn.addEventListener('click', function(){
+        const curr = document.body.getAttribute('data-theme');
+        const next = curr === 'light' ? 'dark' : 'light';
+        if(next === 'dark') document.body.removeAttribute('data-theme');
+        else document.body.setAttribute('data-theme', 'light');
+        localStorage.setItem('rr_theme', next);
+        btn.textContent = next === 'light' ? '☀️' : '🌙';
+      });
+    }
+  })();
+
+  function checkStrength(v) {
+    const fill = document.getElementById('pwdFill');
+    const label = document.getElementById('pwdLabel');
+    let s = 0;
+    if (v.length >= 8) s++;
+    if (/[A-Z]/.test(v)) s++;
+    if (/[0-9]/.test(v)) s++;
+    if (/[^A-Za-z0-9]/.test(v)) s++;
+    const levels = [
+      { p: '0%',   c: 'transparent',  t: 'Enter a password' },
+      { p: '25%',  c: '#ef4444',       t: 'Weak' },
+      { p: '50%',  c: '#f59e0b',       t: 'Fair' },
+      { p: '75%',  c: '#eab308',       t: 'Good' },
+      { p: '100%', c: '#10b981',       t: 'Strong ✓' },
+    ];
+    const l = levels[s];
+    fill.style.width = l.p;
+    fill.style.background = l.c;
+    label.textContent = l.t;
+    label.style.color = s < 2 ? '#fca5a5' : s < 4 ? '#fde68a' : '#a7f3d0';
+  }
+
+  function fieldErr(id, msg) {
+    const el = document.getElementById('err-' + id);
+    const inp = document.getElementById(id);
+    if (el) { el.textContent = msg; el.classList.toggle('show', !!msg); }
+    if (inp) inp.classList.toggle('invalid', !!msg);
+  }
+
+  function clearErrors() {
+    document.querySelectorAll('.field-error').forEach(e => { e.classList.remove('show'); e.textContent = ''; });
+    document.querySelectorAll('.form-control').forEach(i => i.classList.remove('invalid'));
+    document.getElementById('alertError').classList.remove('show');
+    document.getElementById('alertSuccess').classList.remove('show');
+  }
+
+  document.getElementById('registerForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    clearErrors();
+    const v = id => document.getElementById(id).value.trim();
+    let ok = true;
+    if (!v('firstName'))  { fieldErr('firstName', 'Required.');            ok = false; }
+    if (!v('lastName'))   { fieldErr('lastName',  'Required.');            ok = false; }
+    if (!v('username'))   { fieldErr('username',  'Required.');            ok = false; }
+    if (!v('email') || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v('email'))) {
+      fieldErr('email', 'Enter a valid email address.'); ok = false;
+    }
+    if (v('password').length < 8) { fieldErr('password',  'Minimum 8 characters.'); ok = false; }
+    if (v('password') !== document.getElementById('password2').value) {
+      fieldErr('password2', 'Passwords do not match.'); ok = false;
+    }
+    if (!document.getElementById('terms').checked) {
+      document.getElementById('alertMsg').textContent = 'You must agree to the Terms of Service.';
+      document.getElementById('alertError').classList.add('show');
+      ok = false;
+    }
+    if (!ok) return;
+
+    const btn = document.getElementById('registerBtn');
+    btn.innerHTML = '<span class="spinner"></span> Creating account…';
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/v1/auth/register/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+        body: JSON.stringify({
+          first_name: v('firstName'), last_name: v('lastName'),
+          username: v('username'),    email: v('email'),
+          phone: document.getElementById('phone').value.trim(),
+          role: selectedRole,
+          password: document.getElementById('password').value,
+          password2: document.getElementById('password2').value
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (selectedRole === 'provider') {
+          // Store tokens so provider can go straight to onboarding
+          const tokens = data.tokens || {};
+          if (tokens.access) {
+            localStorage.setItem('rr_access',  tokens.access);
+            localStorage.setItem('rr_refresh', tokens.refresh);
+            localStorage.setItem('rr_user', JSON.stringify(data.user || {}));
+          }
+          document.getElementById('successMsg').textContent = 'Account created! Setting up your provider profile…';
+          document.getElementById('alertSuccess').classList.add('show');
+          setTimeout(() => window.location.href = '/provider/onboarding/', 1600);
+        } else {
+          document.getElementById('successMsg').textContent = 'Account created! Redirecting to login…';
+          document.getElementById('alertSuccess').classList.add('show');
+          setTimeout(() => window.location.href = '/login/', 1800);
+        }
+      } else {
+        const fieldMap = { email: 'email', username: 'username', password: 'password', password2: 'password2' };
+        let handled = false;
+        for (const [f, id] of Object.entries(fieldMap)) {
+          if (data[f]) { fieldErr(id, Array.isArray(data[f]) ? data[f][0] : data[f]); handled = true; }
+        }
+        if (!handled) {
+          document.getElementById('alertMsg').textContent = data.detail || data.message || 'Registration failed. Please try again.';
+          document.getElementById('alertError').classList.add('show');
+        }
+        btn.innerHTML = 'Create Account →';
+        btn.disabled = false;
+      }
+    } catch {
+      document.getElementById('alertMsg').textContent = 'Network error. Please check your connection.';
+      document.getElementById('alertError').classList.add('show');
+      btn.innerHTML = 'Create Account →';
+      btn.disabled = false;
+    }
+  });
+
+  /* ── Liquid background ── */
+  (function () {
+    const canvas = document.getElementById('liquid-canvas');
+    const ctx = canvas.getContext('2d');
+    let W, H;
+    function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+    resize(); window.addEventListener('resize', resize);
+    const mouse = { x: W/2, y: H/2 };
+    window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+    const PALETTE = [[99,102,241],[59,130,246],[16,185,129],[139,92,246],[6,182,212]];
+    class Blob {
+      constructor(i) {
+        this.i = i; this.r = Math.min(W,H)*(0.22+Math.random()*0.18);
+        this.color = PALETTE[i%PALETTE.length];
+        this.angle = (i/5)*Math.PI*2;
+        this.orbitR = Math.min(W,H)*(0.16+Math.random()*0.14);
+        this.x = W/2+Math.cos(this.angle)*this.orbitR; this.y = H/2+Math.sin(this.angle)*this.orbitR;
+        this.vx = 0; this.vy = 0; this.mPhase = Math.random()*Math.PI*2; this.spd = 0.5+Math.random()*0.8;
+      }
+      update() {
+        this.angle += 0.00045*this.spd;
+        const tx = W/2+Math.cos(this.angle)*this.orbitR, ty = H/2+Math.sin(this.angle)*this.orbitR;
+        const dx = this.x-mouse.x, dy = this.y-mouse.y, d = Math.sqrt(dx*dx+dy*dy)||1;
+        if (d<200){const f=(200-d)/200*0.06;this.vx+=(dx/d)*f*this.r*0.4;this.vy+=(dy/d)*f*this.r*0.4;}
+        this.vx+=(tx-this.x)*0.014; this.vy+=(ty-this.y)*0.014;
+        this.vx*=0.88; this.vy*=0.88; this.x+=this.vx; this.y+=this.vy; this.mPhase+=0.0009*this.spd;
+      }
+      draw() {
+        const [r,g,b]=this.color, pts=10;
+        ctx.beginPath();
+        for(let i=0;i<=pts;i++){const a=(i/pts)*Math.PI*2,w=Math.sin(a*2+this.mPhase)*0.35*this.r*0.42+Math.sin(a*3+this.mPhase*0.8)*0.35*this.r*0.22,rad=this.r+w,px=this.x+Math.cos(a)*rad,py=this.y+Math.sin(a)*rad;i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
+        ctx.closePath();
+        const g2=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.r*1.2);
+        g2.addColorStop(0,`rgba(${r},${g},${b},0.70)`); g2.addColorStop(1,`rgba(${r},${g},${b},0)`);
+        ctx.fillStyle=g2; ctx.fill();
+      }
+    }
+    const blobs = Array.from({length:5},(_,i)=>new Blob(i));
+    function loop(){ctx.clearRect(0,0,W,H);ctx.save();ctx.filter='blur(65px)';blobs.forEach(b=>{b.update();b.draw();});ctx.restore();requestAnimationFrame(loop);}
+    requestAnimationFrame(loop);
+  })();
+</script>
+
+<!-- Terms Modal -->
+<div id="termsModal" class="modal-overlay" onclick="closeTermsModal(event)">
+  <div class="glass terms-modal">
+    <h2 style="margin-bottom: 1rem; color: var(--text);">Terms &amp; Conditions</h2>
+    <div class="terms-content">
+      <h4>1. Acceptance of Terms</h4>
+      <p>By creating an account, whether as a Driver or a Service Provider, you agree to be bound by these Terms of Service and our Privacy Policy.</p>
+      
+      <h4>2. Service Provider Commission</h4>
+      <p>By registering as a <strong>Service Provider</strong>, you acknowledge and agree that the RoadRescue platform takes a <strong>20% commission</strong> on every transaction and deal processed through the system.</p>
+
+      <h4>3. User Responsibilities</h4>
+      <p>Drivers must provide accurate location and vehicle details when requesting assistance. Service Providers must ensure they are qualified and capable of fulfilling the requests they accept.</p>
+      
+      <h4>4. Privacy Policy</h4>
+      <p>Your data is processed securely. We only share necessary location and vehicle information with your assigned service provider to facilitate emergency assistance.</p>
+    </div>
+    <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 12px;">
+      <button class="btn-glass" style="width: auto; padding: 0.5rem 1.5rem; color: var(--text); border: 1px solid rgba(255,255,255,0.2);" onclick="closeTermsModal()">Cancel</button>
+      <button class="btn-submit" style="width: auto; padding: 0.5rem 1.5rem;" onclick="acceptTerms()">I Agree</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5); backdrop-filter: blur(5px);
+    z-index: 9999; display: none; align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .terms-modal {
+    width: 90%; max-width: 600px; max-height: 80vh;
+    padding: 2rem; border-radius: var(--r-xl);
+    display: flex; flex-direction: column;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  }
+  body[data-theme="light"] .terms-modal {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  .terms-content {
+    overflow-y: auto; color: var(--text); padding-right: 1rem;
+    font-size: 0.85rem; line-height: 1.6;
+  }
+  .terms-content h4 { margin-top: 1.2rem; margin-bottom: 0.5rem; color: #60a5fa; }
+  body[data-theme="light"] .terms-content h4 { color: #2563eb; }
+</style>
+
+<script>
+  function openTermsModal() {
+    document.getElementById('termsModal').classList.add('open');
+  }
+  function closeTermsModal(e) {
+    if(!e || e.target === document.getElementById('termsModal')) {
+      document.getElementById('termsModal').classList.remove('open');
+    }
+  }
+  function acceptTerms() {
+    const cb = document.getElementById('terms');
+    cb.disabled = false;
+    cb.checked = true;
+    closeTermsModal();
+  }
+</script>
+</body>
+</html>

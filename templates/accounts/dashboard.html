@@ -1,0 +1,775 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — RoadRescue</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}"/>
+  <style>
+    .star { color: rgba(255,255,255,0.3); transition: color 0.15s; }
+    .star.active { color: #f59e0b; }
+    .star:hover { color: #fbbf24; }
+    #reviewModal .modal-glass { width: 100%; max-width: 460px; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="container">
+    <a href="/" class="navbar-brand">Road<span>Rescue</span></a>
+    <div class="navbar-nav">
+      <a href="/"          class="nav-link">🗺️ Portal</a>
+      <a href="/#emergency" class="nav-link">🆘 SOS</a>
+      <a href="/api/docs/" class="nav-link" target="_blank">📄 API</a>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="nav-user-box" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:var(--r-full);padding:5px 14px 5px 5px;">
+        <div class="user-avatar" style="width:32px;height:32px;font-size:0.85rem;" id="navAvatar">?</div>
+        <span style="font-size:0.85rem;font-weight:600;color:var(--text);" id="navName">…</span>
+      </div>
+      <button class="btn btn-glass desktop-only" style="padding:7px 16px;font-size:0.85rem;" onclick="logout()">Sign Out</button>
+      <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
+      <button class="hamburger" id="hamburger" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- Mobile Nav Drawer -->
+<div class="mobile-nav" id="mobileNav">
+  <button class="mobile-nav-close" id="mobileNavClose">×</button>
+  <a href="/"          class="nav-link" onclick="closeMobileNav()">🗺️ Portal</a>
+  <a href="/#emergency" class="nav-link" onclick="closeMobileNav()">🆘 SOS</a>
+  <a href="/api/docs/" class="nav-link" target="_blank">📄 API Docs</a>
+  <a href="/admin-panel/" class="nav-link" id="mobileAdminPanel" style="display:none;" onclick="closeMobileNav()">📊 Admin Panel</a>
+  <button class="btn btn-glass" style="padding:12px 32px;margin-top:1rem;" onclick="logout()">Sign Out</button>
+</div>
+
+<div class="container" style="padding-top:2rem;padding-bottom:5rem;">
+
+  <!-- Welcome glass banner -->
+  <div class="glass glass-specular" style="border-radius:var(--r-xl);padding:28px 32px;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+    <div>
+      <div style="font-size:0.85rem;color:var(--muted);margin-bottom:4px;">👋 Welcome back,</div>
+      <h1 style="font-size:1.8rem;font-weight:800;color:var(--text);letter-spacing:-0.03em;margin-bottom:4px;" id="welcomeName">…</h1>
+      <div style="font-size:0.9rem;color:var(--muted);" id="welcomeSub">Loading…</div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <a href="/#find"      class="btn btn-primary-glass" style="padding:10px 22px;">📍 Find Services</a>
+      <a href="/#emergency" class="btn btn-danger-glass"  style="padding:10px 22px;">🆘 Emergency</a>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:1.5rem;">
+    <div class="glass card glass-specular stat-card" style="border-left:3px solid #3b82f6;">
+      <div class="stat-icon">🚨</div>
+      <div class="stat-num" id="stTotal">—</div>
+      <div class="stat-label">Total Requests</div>
+    </div>
+    <div class="glass card glass-specular stat-card" style="border-left:3px solid #10b981;">
+      <div class="stat-icon">✅</div>
+      <div class="stat-num" id="stDone">—</div>
+      <div class="stat-label">Completed</div>
+    </div>
+    <div class="glass card glass-specular stat-card" style="border-left:3px solid #f59e0b;">
+      <div class="stat-icon">⏳</div>
+      <div class="stat-num" id="stPending">—</div>
+      <div class="stat-label">In Progress</div>
+    </div>
+    <div class="glass card glass-specular stat-card" style="border-left:3px solid #a78bfa;">
+      <div class="stat-icon">⭐</div>
+      <div class="stat-num" id="stReviews">0</div>
+      <div class="stat-label">Reviews Given</div>
+    </div>
+  </div>
+
+  <!-- Available Jobs (providers only, shown by JS) -->
+  <div id="availableJobsSection" style="display:none;margin-bottom:1.5rem;">
+    <div class="glass glass-specular" style="border-radius:var(--r-xl);padding:0;overflow:hidden;">
+      <div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <h2 style="color:var(--text);font-size:1.1rem;font-weight:700;">🔔 Available Jobs — Accept to Claim</h2>
+        <button onclick="loadRequests()" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:5px 14px;color:var(--muted);font-size:0.8rem;cursor:pointer;">↻ Refresh</button>
+      </div>
+      <div class="table-container">
+        <table class="table">
+          <thead><tr>
+            <th>ID</th><th>Issue</th><th>Vehicle</th><th>Location</th><th>Date</th><th>Action</th>
+          </tr></thead>
+          <tbody id="availableJobsBody">
+            <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted);">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- My Requests / Assigned Jobs table -->
+    <div class="glass glass-specular" style="border-radius:var(--r-xl);padding:0;overflow:hidden;margin-bottom:1.5rem;">
+    <div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <h2 style="color:var(--text);font-size:1.1rem;font-weight:700;" id="tableTitle">🚨 My Emergency Requests</h2>
+      <a href="/#emergency" id="newReqBtn" style="color:#93c5fd;font-size:0.85rem;text-decoration:none;font-weight:600;">+ New Request</a>
+    </div>
+    <div class="table-container">
+      <table class="table">
+        <thead><tr>
+          <th>ID</th><th>Issue</th><th>Vehicle</th><th>Location</th><th>Status</th><th>Date</th><th>Action</th>
+        </tr></thead>
+        <tbody id="reqBody">
+          <tr><td colspan="7" style="text-align:center;padding:2.5rem;color:var(--muted);">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- My Service Requests table -->
+  <div class="glass glass-specular" style="border-radius:var(--r-xl);padding:0;overflow:hidden;margin-bottom:1.5rem;">
+    <div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <h2 style="color:var(--text);font-size:1.1rem;font-weight:700;" id="srTableTitle">📅 My Service Requests</h2>
+    </div>
+    <div class="table-container">
+      <table class="table">
+        <thead><tr>
+          <th>ID</th><th>Service</th><th>Vehicle</th><th>Provider / Customer</th><th>Status</th><th>Date</th><th>Action</th>
+        </tr></thead>
+        <tbody id="srBody">
+          <tr><td colspan="7" style="text-align:center;padding:2.5rem;color:var(--muted);">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Profile + Quick actions -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;">
+    <div class="glass card glass-specular">
+      <h2 style="color:var(--text);font-size:1.1rem;margin-bottom:1.5rem;">👤 My Profile</h2>
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
+        <div class="user-avatar" id="profAvatar" style="width:60px;height:60px;font-size:1.5rem;">?</div>
+        <div>
+          <div style="font-size:1rem;font-weight:700;color:var(--text);" id="profName">—</div>
+          <span class="badge badge-primary-glass" style="margin-top:4px;" id="profRole">—</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:1.5rem;font-size:0.875rem;">
+        <div style="display:flex;gap:10px;"><span style="width:22px;text-align:center;">📧</span><span style="color:var(--muted);" id="profEmail">—</span></div>
+        <div style="display:flex;gap:10px;"><span style="width:22px;text-align:center;">📱</span><span style="color:var(--muted);" id="profPhone">—</span></div>
+        <div style="display:flex;gap:10px;"><span style="width:22px;text-align:center;">🪪</span><span style="color:var(--muted);" id="profUsername">—</span></div>
+        <div style="display:flex;gap:10px;"><span style="width:22px;text-align:center;">🗓️</span><span style="color:var(--muted);" id="profJoined">—</span></div>
+      </div>
+      <button class="btn btn-glass" style="width:100%;" onclick="openEdit()">✏️ Edit Profile</button>
+    </div>
+
+    <div class="glass card glass-specular">
+      <h2 style="color:var(--text);font-size:1.1rem;margin-bottom:1.5rem;">⚡ Quick Actions</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <a href="/#find"        class="quick-action-item"><span class="qa-icon">🗺️</span><span class="qa-label">Find Nearby</span></a>
+        <a href="/#emergency"   class="quick-action-item"><span class="qa-icon">🚨</span><span class="qa-label">Emergency SOS</span></a>
+        <a href="/api/docs/"    class="quick-action-item" target="_blank"><span class="qa-icon">📄</span><span class="qa-label">API Docs</span></a>
+        <a href="#"             class="quick-action-item" onclick="logout();return false;"><span class="qa-icon">🚪</span><span class="qa-label">Sign Out</span></a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div class="modal-overlay" id="editModal" onclick="closeEdit(event)">
+  <div class="glass modal-glass glass-specular">
+    <h2 style="color:var(--text);margin-bottom:1.5rem;">✏️ Edit Profile</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-group"><label class="form-label">First Name</label><input class="form-control" id="eFirst" type="text"/></div>
+      <div class="form-group"><label class="form-label">Last Name</label><input class="form-control" id="eLast" type="text"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Phone</label><input class="form-control" id="ePhone" type="tel"/></div>
+    <div id="editMsg" style="font-size:0.875rem;font-weight:600;margin-bottom:1rem;display:none;"></div>
+    <div style="display:flex;gap:12px;">
+      <button class="btn btn-glass" style="flex:1;" onclick="closeEdit()">Cancel</button>
+      <button class="btn btn-primary-glass" style="flex:1;" id="saveBtn" onclick="saveProfile()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Review Modal -->
+<div class="modal-overlay" id="reviewModal" onclick="closeReviewModal(event)">
+  <div class="glass modal-glass glass-specular" style="max-width:460px;">
+    <h2 style="color:var(--text);margin-bottom:0.5rem;">⭐ Leave a Review</h2>
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1.5rem;">Share your experience with this service provider.</p>
+    <input type="hidden" id="reviewReqId"/>
+    <input type="hidden" id="reviewProviderId"/>
+    <input type="hidden" id="reviewType"/>
+    <!-- Star Rating -->
+    <div style="margin-bottom:1.2rem;">
+      <div style="font-size:0.85rem;color:var(--muted);margin-bottom:8px;font-weight:600;">Your Rating</div>
+      <div id="starContainer" style="display:flex;gap:6px;font-size:2rem;cursor:pointer;">
+        <span class="star" data-v="1" onclick="setRating(1)">☆</span>
+        <span class="star" data-v="2" onclick="setRating(2)">☆</span>
+        <span class="star" data-v="3" onclick="setRating(3)">☆</span>
+        <span class="star" data-v="4" onclick="setRating(4)">☆</span>
+        <span class="star" data-v="5" onclick="setRating(5)">☆</span>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:1.2rem;">
+      <label class="form-label">Your Comment</label>
+      <textarea class="form-control" id="reviewComment" rows="3" placeholder="Tell us about your experience..."></textarea>
+    </div>
+    <div id="reviewMsg" style="font-size:0.875rem;font-weight:600;margin-bottom:1rem;display:none;"></div>
+    <div style="display:flex;gap:12px;">
+      <button class="btn btn-glass" style="flex:1;" onclick="closeReviewModal()">Cancel</button>
+      <button class="btn btn-primary-glass" style="flex:1;" id="submitReviewBtn" onclick="submitReview()">Submit Review</button>
+    </div>
+  </div>
+</div>
+
+<!-- QR Code Modal -->
+<div class="modal-overlay" id="qrModal" onclick="closeQR(event)">
+  <div class="glass modal-glass glass-specular" style="text-align:center;">
+    <h2 style="color:var(--text);margin-bottom:1rem;">Scan to Pay</h2>
+    <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1.5rem;">Customer can scan this QR code with any UPI app to pay the bill securely.</p>
+    <div id="qrContainer" style="background:#fff;padding:20px;border-radius:12px;display:inline-block;margin-bottom:1.5rem;">
+      <img id="qrImage" src="" alt="QR Code" style="width:250px;height:250px;object-fit:contain;"/>
+    </div>
+    <div style="font-weight:700;color:var(--text);font-size:1.2rem;margin-bottom:1.5rem;" id="qrAmountDisplay"></div>
+    <div style="display:flex;gap:12px;">
+      <button class="btn btn-glass" style="flex:1;" onclick="closeQR()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const CSRF=document.cookie.match(/csrftoken=([^;]+)/)?.[1]||'';
+  const token=localStorage.getItem('rr_access');
+  if(!token) window.location.href='/login/';
+
+  async function loadUser(){
+    try{
+      const res=await fetch('/api/v1/auth/profile/',{headers:{Authorization:'Bearer '+token}});
+      if(res.status===401){logout();return;}
+      const u=await res.json();
+      localStorage.setItem('rr_user',JSON.stringify(u));
+      renderUser(u);
+    }catch(e){const c=localStorage.getItem('rr_user');if(c)renderUser(JSON.parse(c));}
+  }
+
+  function renderUser(u){
+    const ini=((u.first_name&&u.first_name[0]||'')+(u.last_name&&u.last_name[0]||'')||u.username&&u.username[0]||'?').toUpperCase();
+    const full=[u.first_name,u.last_name].filter(Boolean).join(' ')||u.username;
+    const roleLabel={customer:'Driver',provider:'Service Provider',admin:'Administrator'}[u.role]||u.role||'User';
+    const joined=u.created_at?new Date(u.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}):'--';
+    document.getElementById('navAvatar').textContent=ini;
+    document.getElementById('navName').textContent=full;
+    document.getElementById('welcomeName').textContent=full;
+    document.getElementById('profAvatar').textContent=ini;
+    document.getElementById('profName').textContent=full;
+    document.getElementById('profRole').textContent=roleLabel;
+    document.getElementById('profEmail').textContent=u.email||'--';
+    document.getElementById('profPhone').textContent=u.phone||'Not provided';
+    document.getElementById('profUsername').textContent='@'+(u.username||'--');
+    document.getElementById('profJoined').textContent='Joined '+joined;
+    document.getElementById('eFirst').value=u.first_name||'';
+    document.getElementById('eLast').value=u.last_name||'';
+    document.getElementById('ePhone').value=u.phone||'';
+    const stRev = document.getElementById('stReviews');
+    if(stRev) stRev.textContent = u.reviews_given || 0;
+    if(u.role==='provider'){
+      document.getElementById('tableTitle').textContent='My Assigned Jobs';
+      document.getElementById('newReqBtn').style.display='none';
+      document.getElementById('welcomeSub').textContent='Service Provider Dashboard';
+      var av=document.getElementById('availableJobsSection');
+      if(av) av.style.display='block';
+    } else {
+      document.getElementById('welcomeSub').textContent='Role: '+roleLabel;
+    }
+    if(u.is_staff){
+      document.getElementById('adminLink').style.display='flex';
+      document.getElementById('adminPanelLink').style.display='flex';
+      document.getElementById('mobileAdminPanel').style.display='flex';
+    }
+  }
+
+  var pillMap={pending:'badge-warning-glass',accepted:'badge-primary-glass',declined:'badge-danger-glass',assigned:'badge-warning-glass',en_route:'badge-primary-glass',in_progress:'badge-primary-glass',completed:'badge-success-glass',cancelled:'badge-danger-glass'};
+
+  async function loadRequests(){
+    var u=JSON.parse(localStorage.getItem('rr_user')||'{}');
+    var isProvider=u.role==='provider';
+    try{
+      const [res, srRes] = await Promise.all([
+        fetch('/api/v1/emergency/requests/',{headers:{Authorization:'Bearer '+token}}),
+        fetch('/api/v1/emergency/service-requests/',{headers:{Authorization:'Bearer '+token}})
+      ]);
+      
+      if(!res.ok || !srRes.ok)throw new Error();
+      
+      const data=await res.json();
+      const srData=await srRes.json();
+      
+      const reqs=data.results||data;
+      const srReqs=srData.results||srData;
+
+      if(isProvider){
+        var available=reqs.filter(function(r){return r.status==='pending'&&!r.assigned_provider;});
+        var myJobs=reqs.filter(function(r){return r.assigned_provider&&r.status!=='pending';});
+        
+        document.getElementById('stTotal').textContent=myJobs.length + srReqs.length;
+        document.getElementById('stDone').textContent=myJobs.filter(function(r){return r.status==='completed';}).length + srReqs.filter(function(r){return r.status==='completed';}).length;
+        document.getElementById('stPending').textContent=myJobs.filter(function(r){return r.status!=='completed'&&r.status!=='cancelled';}).length + srReqs.filter(function(r){return r.status!=='completed'&&r.status!=='cancelled';}).length;
+        
+        renderAvailableJobs(available);
+        renderMyJobs(myJobs);
+        renderServiceJobs(srReqs, isProvider);
+      } else {
+        document.getElementById('stTotal').textContent=reqs.length + srReqs.length;
+        document.getElementById('stDone').textContent=reqs.filter(function(r){return r.status==='completed';}).length + srReqs.filter(function(r){return r.status==='completed';}).length;
+        document.getElementById('stPending').textContent=reqs.filter(function(r){return r.status!=='completed'&&r.status!=='cancelled';}).length + srReqs.filter(function(r){return r.status!=='completed'&&r.status!=='cancelled';}).length;
+        
+        renderCustomerRequests(reqs);
+        renderServiceJobs(srReqs, isProvider);
+      }
+    }catch(e){
+      document.getElementById('reqBody').innerHTML='<tr><td colspan="7" style="text-align:center;padding:2rem;color:#fca5a5;">Could not load requests.</td></tr>';
+      if(document.getElementById('srBody')) document.getElementById('srBody').innerHTML='<tr><td colspan="7" style="text-align:center;padding:2rem;color:#fca5a5;">Could not load requests.</td></tr>';
+    }
+  }
+
+  function makeAcceptBtn(id){
+    return '<button class="btn btn-primary-glass" style="padding:5px 12px;font-size:0.75rem;" onclick="acceptJob('+id+',this)">Accept Job</button>';
+  }
+
+  function makeStatusBtn(r){
+    if(r.status==='assigned')    return '<button class="btn btn-primary-glass" style="padding:4px 10px;font-size:0.7rem;" onclick="updateStatus('+r.id+',\'en_route\')">Start Job</button>';
+    if(r.status==='en_route')    return '<button class="btn btn-primary-glass" style="padding:4px 10px;font-size:0.7rem;" onclick="updateStatus('+r.id+',\'in_progress\')">Arrived</button>';
+    if(r.status==='in_progress') return '<button class="btn btn-success-glass" style="padding:4px 10px;font-size:0.7rem;" onclick="updateStatus('+r.id+',\'completed\')">Complete</button>';
+    if(r.status==='completed') {
+      if (r.payment && r.payment.status === 'completed') return '<span style="color:#34d399;font-size:0.75rem;font-weight:700;">PAID</span>';
+      return '<div style="display:flex;gap:4px;flex-direction:column;"><button class="btn btn-primary-glass" style="padding:4px 10px;font-size:0.7rem;" onclick="generateQR('+r.id+',\'emergency\')">Get QR Code</button><button class="btn btn-success-glass" style="padding:4px 10px;font-size:0.7rem;" onclick="confirmPaymentManually('+r.id+',\'emergency\')">Confirm Paid</button></div>';
+    }
+    return '--';
+  }
+
+  function renderAvailableJobs(reqs){
+    var tbody=document.getElementById('availableJobsBody');
+    if(!tbody)return;
+    if(!reqs.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted);">No open jobs right now. Check back soon.</td></tr>';return;}
+    tbody.innerHTML=reqs.slice(0,10).map(function(r){
+      var date=new Date(r.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+      var loc=(r.location_address||'--').slice(0,28);
+      return '<tr><td style="font-weight:700;color:var(--text);">#'+r.id+'</td><td>'+(r.issue_display||r.issue_type)+'</td><td>'+(r.vehicle_display||r.vehicle_type)+'</td><td style="color:var(--muted);">'+loc+'</td><td style="color:var(--muted);">'+date+'</td><td>'+makeAcceptBtn(r.id)+'</td></tr>';
+    }).join('');
+  }
+
+  function renderMyJobs(reqs){
+    var tbody=document.getElementById('reqBody');
+    if(!reqs.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:2.5rem;color:var(--muted);">No jobs assigned yet. Accept jobs from the Available Jobs section above.</td></tr>';return;}
+    tbody.innerHTML=reqs.slice(0,10).map(function(r){
+      var date=new Date(r.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+      var loc=(r.location_address||'--').slice(0,26);
+      return '<tr><td style="font-weight:700;color:var(--text);">#'+r.id+'</td><td>'+(r.issue_display||r.issue_type)+'</td><td>'+(r.vehicle_display||r.vehicle_type)+'</td><td style="color:var(--muted);">'+loc+'</td><td><span class="badge '+(pillMap[r.status]||'badge-warning-glass')+'">'+(r.status_display||r.status)+'</span></td><td style="color:var(--muted);">'+date+'</td><td>'+makeStatusBtn(r)+'</td></tr>';
+    }).join('');
+  }
+
+  function makePayBtn(r){
+    if(r.status!=='completed') return '--';
+    var amt=parseFloat((r.payment&&r.payment.amount)||499);
+    if(!r.payment||r.payment.status!=='completed')
+      return '<button class="btn btn-primary-glass" style="padding:5px 12px;font-size:0.75rem;font-weight:700;" onclick="payNow('+r.id+','+amt+',this)">Pay Rs.'+amt+'</button>';
+    // Paid — show review button
+    var provId = '';
+    if (r.assigned_provider) {
+      provId = typeof r.assigned_provider === 'object' ? r.assigned_provider.id : r.assigned_provider;
+    }
+    if (r.assigned_provider_id) {
+      provId = r.assigned_provider_id;
+    }
+    return '<div style="display:flex;flex-direction:column;gap:4px;"><span style="color:#34d399;font-size:0.75rem;font-weight:700;">✅ PAID</span>'+
+      (provId ? '<button class="btn btn-glass" style="padding:3px 10px;font-size:0.7rem;" onclick="openReviewModal('+r.id+','+provId+',\'emergency\')">⭐ Review</button>' : '')+
+      '</div>';
+  }
+
+  function renderCustomerRequests(reqs){
+    var tbody=document.getElementById('reqBody');
+    if(!reqs.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:2.5rem;color:var(--muted);">No requests yet. <a href="/#emergency" style="color:#93c5fd;">Submit one</a></td></tr>';return;}
+    tbody.innerHTML=reqs.slice(0,8).map(function(r){
+      var date=new Date(r.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+      var loc=(r.location_address||'--').slice(0,26);
+      return '<tr><td style="font-weight:700;color:var(--text);">#'+r.id+'</td><td>'+(r.issue_display||r.issue_type)+'</td><td>'+(r.vehicle_display||r.vehicle_type)+'</td><td style="color:var(--muted);">'+loc+'</td><td><span class="badge '+(pillMap[r.status]||'badge-warning-glass')+'">'+(r.status_display||r.status)+'</span></td><td style="color:var(--muted);">'+date+'</td><td>'+makePayBtn(r)+'</td></tr>';
+    }).join('');
+  }
+
+  function makeSRStatusBtn(r, isProvider) {
+    if(!isProvider && r.status === 'pending') return '<button class="btn btn-danger-glass" style="padding:4px 10px;font-size:0.7rem;" onclick="updateSRStatus('+r.id+',\'cancel\')">Cancel</button>';
+    if(!isProvider && r.status === 'completed') {
+      var amt = parseFloat((r.payment && r.payment.amount) || 0);
+      if (amt > 0) {
+        if (!r.payment || r.payment.status !== 'completed') {
+          return '<button class="btn btn-primary-glass" style="padding:4px 10px;font-size:0.7rem;font-weight:700;" onclick="payNowSR('+r.id+','+amt+',this)">Pay Rs.'+amt+'</button>';
+        }
+        // Paid — show review button
+        return '<div style="display:flex;flex-direction:column;gap:4px;"><span style="color:#34d399;font-size:0.7rem;font-weight:700;">✅ PAID</span><button class="btn btn-glass" style="padding:3px 10px;font-size:0.7rem;" onclick="openReviewModal('+r.id+','+r.provider_id+',\'service\')">⭐ Review</button></div>';
+      }
+      return '<span style="color:var(--muted);font-size:0.7rem;">Awaiting Bill</span>';
+    }
+    if(!isProvider) return '--';
+
+    if(r.status==='pending') {
+      return '<div style="display:flex;gap:4px;"><button class="btn btn-primary-glass" style="padding:4px 8px;font-size:0.7rem;" onclick="updateSRStatus('+r.id+',\'accept\')">Accept</button><button class="btn btn-danger-glass" style="padding:4px 8px;font-size:0.7rem;" onclick="updateSRStatus('+r.id+',\'decline\')">Decline</button></div>';
+    }
+    if(r.status==='accepted')    return '<button class="btn btn-primary-glass" style="padding:4px 10px;font-size:0.7rem;" onclick="updateSRStatus('+r.id+',\'start\')">Start Job</button>';
+    if(r.status==='in_progress') return '<button class="btn btn-success-glass" style="padding:4px 10px;font-size:0.7rem;" onclick="updateSRStatus('+r.id+',\'complete\')">Complete</button>';
+    if(r.status==='completed') {
+      if (r.payment && r.payment.status === 'completed') return '<span style="color:#34d399;font-size:0.75rem;font-weight:700;">PAID</span>';
+      return '<div style="display:flex;gap:4px;flex-direction:column;"><button class="btn btn-primary-glass" style="padding:4px 10px;font-size:0.7rem;" onclick="generateQR('+r.id+',\'service\')">Get QR Code</button><button class="btn btn-success-glass" style="padding:4px 10px;font-size:0.7rem;" onclick="confirmPaymentManually('+r.id+',\'service\')">Confirm Paid</button></div>';
+    }
+    return '--';
+  }
+
+  function renderServiceJobs(reqs, isProvider) {
+    var tbody=document.getElementById('srBody');
+    if(!tbody) return;
+    if(!reqs.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:2.5rem;color:var(--muted);">No service requests yet.</td></tr>';return;}
+    tbody.innerHTML=reqs.map(function(r){
+      var date=new Date(r.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+      var otherParty = isProvider ? r.customer_name + '<br><small>' + r.customer_phone + '</small>' : r.provider_name + '<br><small>' + r.provider_phone + '</small>';
+      return '<tr><td style="font-weight:700;color:var(--text);">SR#'+r.id+'</td><td>'+(r.service_type_text)+'</td><td>'+(r.vehicle_display||r.vehicle_type)+'</td><td style="color:var(--muted);line-height:1.2;">'+otherParty+'</td><td><span class="badge '+(pillMap[r.status]||'badge-warning-glass')+'">'+(r.status_display||r.status)+'</span></td><td style="color:var(--muted);">'+date+'</td><td>'+makeSRStatusBtn(r, isProvider)+'</td></tr>';
+    }).join('');
+  }
+
+  async function updateSRStatus(reqId,action){
+    if(!confirm('Are you sure you want to ' + action + ' this request?'))return;
+    try{
+      const res=await fetch('/api/v1/emergency/service-requests/'+reqId+'/' + action + '/', {
+        method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,'X-CSRFToken':CSRF}
+      });
+      if(res.ok)loadRequests();
+      else{const d=await res.json();alert(d.detail||d.error||'Action failed.');}
+    }catch(e){alert('Network error.');}
+  }
+
+  async function acceptJob(reqId,btn){
+    if(!confirm('Accept this job? It will be assigned to you.'))return;
+    var old=btn.innerHTML; btn.innerHTML='...'; btn.disabled=true;
+    try{
+      const res=await fetch('/api/v1/emergency/requests/'+reqId+'/accept_job/',{
+        method:'POST',headers:{Authorization:'Bearer '+token,'X-CSRFToken':CSRF,'Content-Type':'application/json'}
+      });
+      if(res.ok){alert('Job accepted! Check your Assigned Jobs below.');loadRequests();}
+      else{const d=await res.json();alert(d.error||'Could not accept job.');}
+    }catch(e){alert('Network error.');}
+    btn.innerHTML=old; btn.disabled=false;
+  }
+
+  async function updateStatus(reqId,newStatus){
+    if(!confirm('Update status to "'+newStatus.replace(/_/g,' ')+'"?'))return;
+    try{
+      const res=await fetch('/api/v1/emergency/requests/'+reqId+'/',{
+        method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,'X-CSRFToken':CSRF},
+        body:JSON.stringify({status:newStatus})
+      });
+      if(res.ok)loadRequests();
+      else{const d=await res.json();alert(d.detail||d.error||'Failed to update.');}
+    }catch(e){alert('Network error.');}
+  }
+
+  async function confirmPaymentManually(reqId, type) {
+    if(!confirm('Confirm that you have received the payment manually (e.g. via Cash or personal UPI)?')) return;
+    try {
+      const endpoint = type === 'emergency' 
+        ? '/api/v1/emergency/requests/' + reqId + '/confirm_payment/'
+        : '/api/v1/emergency/service-requests/' + reqId + '/confirm_payment/';
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + token, 'X-CSRFToken': CSRF}
+      });
+      if(res.ok) { alert('Payment confirmed!'); loadRequests(); }
+      else { const d = await res.json(); alert(d.detail || d.error || 'Failed to confirm payment.'); }
+    } catch(e) { alert('Network error.'); }
+  }
+
+  async function payNow(requestId,amount,btn){
+    var oldText=btn.innerHTML;
+    btn.innerHTML='...'; btn.disabled=true;
+    try{
+      const res=await fetch('/api/v1/emergency/requests/'+requestId+'/create_payment/',{
+        method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,'X-CSRFToken':CSRF},
+        body:JSON.stringify({amount:amount})
+      });
+      if(!res.ok)throw new Error('Failed to create order');
+      const od=await res.json();
+      var options={
+        key:od.key_id,amount:od.amount,currency:od.currency,
+        name:'RoadRescue',description:'Emergency Service #'+requestId,order_id:od.order_id,
+        handler:async function(response){
+          const vr=await fetch('/api/v1/emergency/requests/'+requestId+'/verify_payment/',{
+            method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,'X-CSRFToken':CSRF},
+            body:JSON.stringify({razorpay_payment_id:response.razorpay_payment_id,razorpay_order_id:response.razorpay_order_id,razorpay_signature:response.razorpay_signature})
+          });
+          if(vr.ok){alert('Payment Successful! Thank you for using RoadRescue.');loadRequests();}
+          else alert('Verification failed. Contact support.');
+        },
+        prefill:{name:JSON.parse(localStorage.getItem('rr_user')||'{}').username||'',email:JSON.parse(localStorage.getItem('rr_user')||'{}').email||''},
+        theme:{color:'#f59e0b'}
+      };
+      var rzp=new Razorpay(options);
+      rzp.open();
+      rzp.on('payment.failed',function(r){alert('Payment Failed: '+r.error.description);});
+    }catch(e){alert('Could not initialize payment. Try again.');}
+    btn.innerHTML=oldText; btn.disabled=false;
+  }
+
+  async function payNowSR(requestId,amount,btn){
+    var oldText=btn.innerHTML;
+    btn.innerHTML='...'; btn.disabled=true;
+    try{
+      const res=await fetch('/api/v1/emergency/service-requests/'+requestId+'/create_payment/',{
+        method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,'X-CSRFToken':CSRF},
+        body:JSON.stringify({amount:amount})
+      });
+      if(!res.ok)throw new Error('Failed to create order');
+      const od=await res.json();
+      var options={
+        key:od.key_id,amount:od.amount,currency:od.currency,
+        name:'RoadRescue',description:'Service Request #'+requestId,order_id:od.order_id,
+        handler:async function(response){
+          const vr=await fetch('/api/v1/emergency/service-requests/'+requestId+'/verify_payment/',{
+            method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,'X-CSRFToken':CSRF},
+            body:JSON.stringify({razorpay_payment_id:response.razorpay_payment_id,razorpay_order_id:response.razorpay_order_id,razorpay_signature:response.razorpay_signature})
+          });
+          if(vr.ok){alert('Payment Successful! Thank you for using RoadRescue.');loadRequests();}
+          else alert('Verification failed. Contact support.');
+        },
+        prefill:{name:JSON.parse(localStorage.getItem('rr_user')||'{}').username||'',email:JSON.parse(localStorage.getItem('rr_user')||'{}').email||''},
+        theme:{color:'#f59e0b'}
+      };
+      var rzp=new Razorpay(options);
+      rzp.open();
+      rzp.on('payment.failed',function(r){alert('Payment Failed: '+r.error.description);});
+    }catch(e){alert('Could not initialize payment. Try again.');}
+    btn.innerHTML=oldText; btn.disabled=false;
+  }
+
+  function openEdit(){document.getElementById('editModal').classList.add('open');}
+  function closeEdit(e){if(!e||e.target===document.getElementById('editModal'))document.getElementById('editModal').classList.remove('open');}
+
+  async function saveProfile(){
+    var btn=document.getElementById('saveBtn'),msg=document.getElementById('editMsg');
+    btn.textContent='Saving...'; btn.disabled=true;
+    try{
+      const res=await fetch('/api/v1/auth/profile/',{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,'X-CSRFToken':CSRF},body:JSON.stringify({first_name:document.getElementById('eFirst').value.trim(),last_name:document.getElementById('eLast').value.trim(),phone:document.getElementById('ePhone').value.trim()})});
+      const data=await res.json();
+      if(res.ok){localStorage.setItem('rr_user',JSON.stringify(data));renderUser(data);msg.style.display='block';msg.style.color='#a7f3d0';msg.textContent='Saved!';setTimeout(function(){closeEdit();},1500);}
+      else{msg.style.display='block';msg.style.color='#fca5a5';msg.textContent='Update failed.';}
+    }catch(e){msg.style.display='block';msg.style.color='#fca5a5';msg.textContent='Network error.';}
+    btn.textContent='Save Changes'; btn.disabled=false;
+  }
+
+  function closeQR(e) {
+    if(!e || e.target === document.getElementById('qrModal')) {
+      document.getElementById('qrModal').classList.remove('open');
+    }
+  }
+
+  async function generateQR(reqId, type) {
+    const amtStr = prompt("Enter the final bill amount (₹):");
+    if(!amtStr) return;
+    const amount = parseFloat(amtStr);
+    if(isNaN(amount) || amount <= 0) {
+      alert("Invalid amount.");
+      return;
+    }
+
+    try {
+      const endpoint = type === 'emergency' 
+        ? `/api/v1/emergency/requests/${reqId}/get_qr/`
+        : `/api/v1/emergency/service-requests/${reqId}/get_qr/`;
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token,
+          'X-CSRFToken': CSRF
+        },
+        body: JSON.stringify({ amount: amount })
+      });
+
+      if(!res.ok) {
+        const d = await res.json();
+        alert(d.error || 'Failed to generate QR code.');
+        return;
+      }
+
+      const data = await res.json();
+      const shortUrl = data.short_url;
+
+      // Render QR code
+      document.getElementById('qrImage').src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(shortUrl)}`;
+      document.getElementById('qrAmountDisplay').textContent = `Total: ₹${amount.toFixed(2)}`;
+      document.getElementById('qrModal').classList.add('open');
+      
+    } catch (e) {
+      alert("Network error while generating QR code.");
+    }
+  }
+
+  // Push Notifications Logic
+  const publicVapidKey = 'BBci4T7wRVT4igB5zDvcKem5hjvMO5k_r0kpOR4VJdWChDikPM7HqbF9E6i5MnSrqenxt6-w6hlcfbgmnXaS18U';
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+      .replace(/\-/g, '+')
+      .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  async function enablePushNotifications() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      console.warn("Push notifications are not supported by your browser.");
+      return;
+    }
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        console.warn("Notification permission denied.");
+        return;
+      }
+      
+      const register = await navigator.serviceWorker.register('/sw.js');
+      const subscription = await register.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+      });
+      
+      const res = await fetch('/api/v1/emergency/push/subscribe/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token,
+          'X-CSRFToken': CSRF
+        },
+        body: JSON.stringify({ subscription: subscription.toJSON() })
+      });
+      if(res.ok) {
+        console.log("Alerts enabled automatically.");
+      } else {
+        console.error("Failed to save subscription details on the server.");
+      }
+    } catch(e) {
+      console.error("Error enabling notifications.", e);
+    }
+  }
+
+  // ── Review Modal ───────────────────────────────────────────────────
+  var currentRating = 0;
+
+  function setRating(val) {
+    currentRating = val;
+    document.querySelectorAll('#starContainer .star').forEach(function(s){
+      s.classList.toggle('active', parseInt(s.dataset.v) <= val);
+      s.textContent = parseInt(s.dataset.v) <= val ? '★' : '☆';
+    });
+  }
+
+  function openReviewModal(reqId, providerId, type) {
+    currentRating = 0;
+    document.getElementById('reviewReqId').value = reqId;
+    document.getElementById('reviewProviderId').value = providerId || '';
+    document.getElementById('reviewType').value = type;
+    document.getElementById('reviewComment').value = '';
+    document.getElementById('reviewMsg').style.display = 'none';
+    document.querySelectorAll('#starContainer .star').forEach(function(s){ s.classList.remove('active'); s.textContent='☆'; });
+    document.getElementById('reviewModal').classList.add('open');
+  }
+
+  function closeReviewModal(e) {
+    if(!e || e.target === document.getElementById('reviewModal'))
+      document.getElementById('reviewModal').classList.remove('open');
+  }
+
+  async function submitReview() {
+    if(!currentRating){ alert('Please select a star rating first.'); return; }
+    var providerId = document.getElementById('reviewProviderId').value;
+    var comment = document.getElementById('reviewComment').value.trim();
+    var type = document.getElementById('reviewType').value;
+    var btn = document.getElementById('submitReviewBtn');
+    var msg = document.getElementById('reviewMsg');
+
+    // For emergency type, we need to get the provider id from the request
+    if(type === 'emergency' && !providerId) {
+      // Try fetching from local data — use a generic provider id fallback
+      msg.style.display = 'block';
+      msg.style.color = '#fca5a5';
+      msg.textContent = 'Could not determine provider for this request.';
+      return;
+    }
+
+    btn.textContent = 'Submitting...'; btn.disabled = true;
+    try {
+      const res = await fetch('/api/v1/services/providers/' + providerId + '/review/', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json', Authorization:'Bearer '+token, 'X-CSRFToken':CSRF},
+        body: JSON.stringify({rating: currentRating, comment: comment})
+      });
+      msg.style.display = 'block';
+      if(res.ok || res.status === 201) {
+        msg.style.color = '#34d399';
+        msg.textContent = '✅ Review submitted! Thank you for your feedback.';
+        loadUser(); // dynamically reload user stats
+        setTimeout(closeReviewModal, 1800);
+      } else {
+        const d = await res.json();
+        msg.style.color = '#fca5a5';
+        msg.textContent = d.detail || d.error || JSON.stringify(d);
+      }
+    } catch(e) { msg.style.display='block'; msg.style.color='#fca5a5'; msg.textContent='Network error.'; }
+    btn.textContent = 'Submit Review'; btn.disabled = false;
+  }
+
+  function logout(){localStorage.removeItem('rr_access');localStorage.removeItem('rr_refresh');localStorage.removeItem('rr_user');window.location.href='/login/';
+  }
+
+  loadUser();
+  loadRequests();
+  enablePushNotifications();
+  
+  // Auto-refresh requests every 10 seconds for LIVE status updates
+  setInterval(loadRequests, 10000);
+</script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="{% static 'js/liquid-bg.js' %}"></script>
+<script>
+// ── Theme Toggle ─────────────────────────────────────────────────────
+(function(){
+  const saved = localStorage.getItem('rr_theme') || 'dark';
+  if(saved === 'light') document.body.setAttribute('data-theme','light');
+  const btn = document.getElementById('themeToggle');
+  if(btn) {
+    btn.textContent = saved === 'light' ? '☀️' : '🌙';
+    btn.addEventListener('click', function(){
+      const curr = document.body.getAttribute('data-theme');
+      const next = curr === 'light' ? 'dark' : 'light';
+      if(next === 'dark') document.body.removeAttribute('data-theme');
+      else document.body.setAttribute('data-theme', 'light');
+      localStorage.setItem('rr_theme', next);
+      btn.textContent = next === 'light' ? '☀️' : '🌙';
+    });
+  }
+})();
+// ── Mobile Nav ────────────────────────────────────────────────────────
+function closeMobileNav(){
+  document.getElementById('mobileNav').classList.remove('open');
+  document.getElementById('hamburger').classList.remove('open');
+}
+document.getElementById('hamburger').addEventListener('click',function(){
+  this.classList.toggle('open');
+  document.getElementById('mobileNav').classList.toggle('open');
+});
+document.getElementById('mobileNavClose').addEventListener('click', closeMobileNav);
+</script>
+</body>
+</html>
